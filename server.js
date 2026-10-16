@@ -160,9 +160,8 @@ app.post('/api/submit', (req, res) => {
       return res.status(400).json({ success: false, message: 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin.' });
     }
 
-    // Atomic monotonic ID generation
-    maxIdCounter++;
-    const newId = `NV-${String(maxIdCounter).padStart(4, '0')}`;
+    // Atomic monotonic ID generation from SQLite
+    const newId = db.generateNextSurveyId();
 
     // Clean & validate Likert answers (1 to 5)
     const sanitizedAnswers = {};
@@ -200,11 +199,8 @@ app.post('/api/submit', (req, res) => {
       }
     };
 
-    // Atomic in-memory push
-    cachedSurveys.push(submission);
-    
-    // Asynchronous non-blocking queue persist
-    scheduleDiskWrite();
+    // Lưu trực tiếp vào SQLite chuẩn ACID (WAL mode, non-blocking)
+    db.insertSurvey(submission);
 
     res.json({
       success: true,
@@ -442,35 +438,15 @@ app.get('/api/stats', requireAdmin, (req, res) => {
   res.json(stats);
 });
 
-// API: Get list of responses with pagination & search (Admin only)
+// API: Get list of responses with pagination & search (Admin only - Powered by SQLite)
 app.get('/api/responses', requireAdmin, (req, res) => {
-  const surveys = readSurveys();
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 20;
-  const search = (req.query.search || '').toLowerCase();
-  const dept = req.query.department;
+  const search = (req.query.search || '').trim();
+  const dept = req.query.department || 'all';
 
-  let filtered = surveys;
-  if (dept && dept !== 'all') {
-    filtered = filtered.filter(s => s.demographics?.department === dept);
-  }
-  if (search) {
-    filtered = filtered.filter(s => 
-      s.id.toLowerCase().includes(search) || 
-      (s.overall?.suggestions && s.overall.suggestions.toLowerCase().includes(search))
-    );
-  }
-
-  const total = filtered.length;
-  const start = (page - 1) * limit;
-  const items = filtered.slice().reverse().slice(start, start + limit);
-
-  res.json({
-    total,
-    page,
-    totalPages: Math.ceil(total / limit),
-    items
-  });
+  const result = db.getPaginatedResponses({ page, limit, search, department: dept });
+  res.json(result);
 });
 
 // API: Export Excel (Admin only)
@@ -730,12 +706,14 @@ app.post('/api/mock-data', requireAdmin, (req, res) => {
       });
     }
 
-    writeSurveys(generated);
+    // Ghi hàng loạt vào SQLite qua Transaction siêu tốc
+    db.clearAllSurveys();
+    db.insertManySurveys(generated);
 
     res.json({
       success: true,
       count: generated.length,
-      message: `Đã khởi tạo thành công ${generated.length} dữ liệu khảo sát mô phỏng chân thực theo cơ cấu bệnh viện!`
+      message: `Đã khởi tạo thành công ${generated.length} dữ liệu khảo sát mô phỏng chân thực vào SQLite!`
     });
   } catch (err) {
     console.error('Error generating mock data:', err);
@@ -746,8 +724,8 @@ app.post('/api/mock-data', requireAdmin, (req, res) => {
 // API: Clear data (Admin only)
 app.post('/api/clear-data', requireAdmin, (req, res) => {
   try {
-    writeSurveys([]);
-    res.json({ success: true, message: 'Đã làm mới dữ liệu khảo sát thành công!' });
+    db.clearAllSurveys();
+    res.json({ success: true, message: 'Đã làm mới dữ liệu khảo sát trong SQLite thành công!' });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Lỗi khi xóa dữ liệu.' });
   }
@@ -757,6 +735,8 @@ const server = app.listen(PORT, () => {
   const localIps = getLocalIpAddresses();
   console.log(`=======================================================`);
   console.log(`🏥 HỆ THỐNG KHẢO SÁT HÀI LÒNG NHÂN VIÊN Y TẾ (500 NV)`);
+  console.log(`💾 CƠ SỞ DỮ LIỆU: SQLite Enterprise ACID (WAL Mode, Non-blocking)`);
+  console.log(`📁 File lưu trữ: data/surveys.db (Kèm auto-sync backup JSON)`);
   console.log(`🚀 Cổng dịch vụ: http://localhost:${PORT}`);
   console.log(`📊 Dashboard Quản trị: http://localhost:${PORT}/admin.html`);
   if (localIps.length > 0) {
