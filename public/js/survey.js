@@ -214,24 +214,28 @@ document.addEventListener('DOMContentLoaded', () => {
     // Demographics selects
     document.getElementById('demo-dept')?.addEventListener('change', (e) => {
       state.demographics.department = e.target.value;
+      if (e.target.value) e.target.closest('.form-group')?.classList.remove('unanswered-error');
       saveDraft();
       updateProgress();
     });
 
     document.getElementById('demo-role')?.addEventListener('change', (e) => {
       state.demographics.role = e.target.value;
+      if (e.target.value) e.target.closest('.form-group')?.classList.remove('unanswered-error');
       saveDraft();
       updateProgress();
     });
 
     document.getElementById('demo-exp')?.addEventListener('change', (e) => {
       state.demographics.experience = e.target.value;
+      if (e.target.value) e.target.closest('.form-group')?.classList.remove('unanswered-error');
       saveDraft();
       updateProgress();
     });
 
     document.getElementById('demo-degree')?.addEventListener('change', (e) => {
       state.demographics.degree = e.target.value;
+      if (e.target.value) e.target.closest('.form-group')?.classList.remove('unanswered-error');
       saveDraft();
       updateProgress();
     });
@@ -243,6 +247,9 @@ document.addEventListener('DOMContentLoaded', () => {
         state.demographics.gender = val;
         document.querySelectorAll('.radio-pill-label[data-gender]').forEach(l => l.classList.remove('active'));
         label.classList.add('active');
+        const radioInput = label.querySelector('input[type="radio"]');
+        if (radioInput) radioInput.checked = true;
+        label.closest('.form-group')?.classList.remove('unanswered-error');
         saveDraft();
         updateProgress();
       });
@@ -423,7 +430,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (step === 2) {
-      document.querySelectorAll('.q-card').forEach(c => c.classList.remove('unanswered-error'));
+      document.querySelectorAll('.question-card').forEach(c => c.classList.remove('unanswered-error'));
       const missing = [];
       [...SURVEY_CONFIG.groups[0].questions, ...SURVEY_CONFIG.groups[1].questions].forEach(q => {
         if (!state.answers[q.id]) missing.push(q.id);
@@ -439,7 +446,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (step === 3) {
-      document.querySelectorAll('.q-card').forEach(c => c.classList.remove('unanswered-error'));
+      document.querySelectorAll('.question-card').forEach(c => c.classList.remove('unanswered-error'));
       const missing = [];
       [...SURVEY_CONFIG.groups[2].questions, ...SURVEY_CONFIG.groups[3].questions].forEach(q => {
         if (!state.answers[q.id]) missing.push(q.id);
@@ -455,7 +462,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (step === 4) {
-      document.querySelectorAll('.q-card').forEach(c => c.classList.remove('unanswered-error'));
+      document.querySelectorAll('.question-card').forEach(c => c.classList.remove('unanswered-error'));
       const missingE = [];
       SURVEY_CONFIG.groups[4].questions.forEach(q => {
         if (!state.answers[q.id]) missingE.push(q.id);
@@ -567,7 +574,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (state.demographics.gender) {
         const radio = document.querySelector(`.radio-pill-label[data-gender="${state.demographics.gender}"]`);
-        if (radio) radio.classList.add('active');
+        if (radio) {
+          radio.classList.add('active');
+          const radioInput = radio.querySelector('input[type="radio"]');
+          if (radioInput) radioInput.checked = true;
+        }
       }
 
       // Restore Likert buttons
