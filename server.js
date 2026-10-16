@@ -200,6 +200,49 @@ app.get('/api/config', (req, res) => {
   });
 });
 
+// API: Admin Login
+app.post('/api/admin/login', (req, res) => {
+  const { username, password } = req.body || {};
+  if (!username || !password) {
+    return res.status(400).json({ success: false, message: 'Vui lòng nhập tên đăng nhập và mật khẩu.' });
+  }
+
+  if (username.trim() === ADMIN_USER && password === ADMIN_PASS) {
+    const token = createAdminSession(ADMIN_USER);
+    return res.json({
+      success: true,
+      token,
+      user: ADMIN_USER,
+      message: 'Đăng nhập Quản trị viên thành công!'
+    });
+  } else {
+    return res.status(401).json({
+      success: false,
+      message: 'Tên đăng nhập hoặc mật khẩu quản trị không chính xác!'
+    });
+  }
+});
+
+// API: Admin Logout
+app.post('/api/admin/logout', (req, res) => {
+  let token = null;
+  const authHeader = req.headers['authorization'];
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7);
+  } else if (req.body && req.body.token) {
+    token = req.body.token;
+  }
+  if (token) {
+    adminSessions.delete(token);
+  }
+  res.json({ success: true, message: 'Đã đăng xuất thành công.' });
+});
+
+// API: Check Admin Auth status
+app.get('/api/admin/check-auth', requireAdmin, (req, res) => {
+  res.json({ success: true, authenticated: true, user: req.adminUser });
+});
+
 // API: Submit a response (Thread-safe, Concurrency-proof, Validated & Sanitized)
 app.post('/api/submit', (req, res) => {
   try {
