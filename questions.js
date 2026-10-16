@@ -88,7 +88,7 @@ const SURVEY_CONFIG = {
       code: "A",
       name: "Môi trường làm việc & Cơ sở vật chất",
       desc: "Đánh giá điều kiện vật chất, an toàn lao động và công cụ hỗ trợ công tác chuyên môn",
-      icon: "building",
+      icon: "🏥",
       questions: [
         { id: "a1", text: "Điều kiện vi khí hậu, ánh sáng, nhiệt độ, thông gió và vệ sinh tại nơi làm việc" },
         { id: "a2", text: "Trang thiết bị y tế, máy móc và vật tư tiêu hao phục vụ công tác khám chữa bệnh" },
@@ -102,7 +102,7 @@ const SURVEY_CONFIG = {
       code: "B",
       name: "Lãnh đạo, Quản lý & Văn hóa ứng xử",
       desc: "Đánh giá năng lực điều hành, sự thấu hiểu và tính công bằng của lãnh đạo các cấp",
-      icon: "users-crown",
+      icon: "👔",
       questions: [
         { id: "b1", text: "Sự lắng nghe, tiếp thu ý kiến và tôn trọng nhân viên của Lãnh đạo Khoa và Ban Giám đốc" },
         { id: "b2", text: "Tính công bằng, khách quan và minh bạch trong phân công nhiệm vụ và đánh giá thi đua" },
@@ -116,7 +116,7 @@ const SURVEY_CONFIG = {
       code: "C",
       name: "Tiền lương, Thu nhập & Chế độ đãi ngộ",
       desc: "Đánh giá sự thỏa đáng của thu nhập, phụ cấp và các chính sách phúc lợi nhân viên",
-      icon: "coins",
+      icon: "💰",
       questions: [
         { id: "c1", text: "Tổng thu nhập (lương, thưởng, thu nhập tăng thêm) tương xứng với khối lượng và áp lực công việc" },
         { id: "c2", text: "Chế độ phụ cấp đặc thù ngành y (trực đêm, phẫu thuật, thủ thuật, độc hại) chi trả kịp thời, thỏa đáng" },
@@ -130,7 +130,7 @@ const SURVEY_CONFIG = {
       code: "D",
       name: "Quan hệ đồng nghiệp & Tinh thần đoàn kết",
       desc: "Đánh giá sự phối hợp chuyên môn, tinh thần hỗ trợ và sự gắn kết giữa các thành viên",
-      icon: "handshake",
+      icon: "🤝",
       questions: [
         { id: "d1", text: "Sự hợp tác, tinh thần tương trợ và thân thiện giữa các đồng nghiệp trong cùng khoa/phòng" },
         { id: "d2", text: "Mối liên hệ phối hợp nhịp nhàng, hiệu quả và hỗ trợ chuyên môn giữa các khoa/phòng khác nhau" },
@@ -143,7 +143,7 @@ const SURVEY_CONFIG = {
       code: "E",
       name: "Đào tạo, Phát triển nghề nghiệp & Thăng tiến",
       desc: "Đánh giá cơ hội học tập nâng cao tay nghề, phát huy năng lực và lộ trình thăng tiến",
-      icon: "graduation-cap",
+      icon: "🎓",
       questions: [
         { id: "e1", text: "Bệnh viện tạo điều kiện thuận lợi tham gia đào tạo liên tục (CME), học chuyên khoa và nâng cao tay nghề" },
         { id: "e2", text: "Cơ hội tiếp cận kỹ thuật mới, kỹ thuật chuyên sâu và được tạo điều kiện phát huy sở trường chuyên môn" },
@@ -171,10 +171,10 @@ const SURVEY_CONFIG = {
       type: "radio",
       required: true,
       options: [
-        { value: "chac_chan", label: "Chắc chắn sẽ tiếp tục gắn bó lâu dài" },
-        { value: "co_the", label: "Có thể sẽ gắn bó nếu điều kiện tiếp tục cải thiện" },
-        { value: "phan_van", label: "Đang phân vân, chưa có định hướng rõ ràng" },
-        { value: "du_dinh_chuyen", label: "Đang tìm kiếm cơ hội hoặc có dự định chuyển nơi khác" }
+        { value: "chac_chan", label: "Chắc chắn sẽ tiếp tục gắn bó lâu dài", icon: "🌟" },
+        { value: "co_the", label: "Có thể sẽ gắn bó nếu điều kiện tiếp tục cải thiện", icon: "🌱" },
+        { value: "phan_van", label: "Đang phân vân, chưa có định hướng rõ ràng", icon: "⚖️" },
+        { value: "du_dinh_chuyen", label: "Đang tìm kiếm cơ hội hoặc có dự định chuyển nơi khác", icon: "🚪" }
       ]
     },
     {
@@ -200,4 +200,7 @@ const SURVEY_CONFIG = {
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = SURVEY_CONFIG;
+}
+if (typeof window !== 'undefined') {
+  window.SURVEY_CONFIG = SURVEY_CONFIG;
 }
