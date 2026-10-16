@@ -301,19 +301,24 @@ function computeStatistics(surveys, filterDept = 'all') {
   const totalOverallScore = list.reduce((acc, curr) => acc + (Number(curr.overall?.score) || 0), 0);
   const overallMean = Number((totalOverallScore / total).toFixed(2));
 
-  // eNPS
+  // eNPS (Healthcare Employee Net Promoter Score)
   let promoters = 0;
   let passives = 0;
   let detractors = 0;
+  let validEnpsCount = 0;
   list.forEach(s => {
     const score = Number(s.overall?.enps);
-    if (score >= 9) promoters++;
-    else if (score >= 7) passives++;
-    else detractors++;
+    if (!isNaN(score) && score >= 0 && score <= 10) {
+      validEnpsCount++;
+      if (score >= 9) promoters++;
+      else if (score >= 7) passives++;
+      else detractors++;
+    }
   });
 
-  const promoterPct = (promoters / total) * 100;
-  const detractorPct = (detractors / total) * 100;
+  const baseCount = validEnpsCount || total || 1;
+  const promoterPct = (promoters / baseCount) * 100;
+  const detractorPct = (detractors / baseCount) * 100;
   const enpsScore = Math.round(promoterPct - detractorPct);
 
   // Commitment breakdown
@@ -494,6 +499,7 @@ app.get('/api/export-excel', (req, res) => {
       ...stats.topConcerns.map(q => [q.text, q.id.toUpperCase(), q.meanScore, q.groupName])
     ];
     const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+    wsSummary['!cols'] = [{ wch: 55 }, { wch: 22 }, { wch: 45 }, { wch: 30 }];
     XLSX.utils.book_append_sheet(wb, wsSummary, 'Báo cáo Tổng hợp');
 
     // 2. Sheet: Chi tiết 23 tiêu chí
@@ -511,6 +517,7 @@ app.get('/api/export-excel', (req, res) => {
       q.distribution[5] || 0
     ]);
     const wsCriteria = XLSX.utils.aoa_to_sheet([criteriaHeaders, ...criteriaRows]);
+    wsCriteria['!cols'] = [{ wch: 8 }, { wch: 35 }, { wch: 75 }, { wch: 22 }, { wch: 16 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 14 }, { wch: 14 }];
     XLSX.utils.book_append_sheet(wb, wsCriteria, 'Chi tiết 23 Tiêu chí');
 
     // 3. Sheet: Toàn bộ phản hồi (Raw Data)
@@ -543,6 +550,11 @@ app.get('/api/export-excel', (req, res) => {
       s.overall?.suggestions || ''
     ]);
     const wsRaw = XLSX.utils.aoa_to_sheet([rawHeaders, ...rawRows]);
+    wsRaw['!cols'] = [
+      { wch: 12 }, { wch: 20 }, { wch: 25 }, { wch: 25 }, { wch: 16 }, { wch: 12 }, { wch: 20 },
+      ...Array(23).fill({ wch: 6 }),
+      { wch: 18 }, { wch: 24 }, { wch: 16 }, { wch: 65 }
+    ];
     XLSX.utils.book_append_sheet(wb, wsRaw, 'Dữ liệu 500 Khảo sát');
 
     // 4. Sheet: Ý kiến đóng góp
@@ -551,6 +563,7 @@ app.get('/api/export-excel', (req, res) => {
       s.id, s.department, s.role, s.experience, s.score, s.text
     ]);
     const wsSug = XLSX.utils.aoa_to_sheet([sugHeaders, ...sugRows]);
+    wsSug['!cols'] = [{ wch: 12 }, { wch: 25 }, { wch: 25 }, { wch: 16 }, { wch: 12 }, { wch: 80 }];
     XLSX.utils.book_append_sheet(wb, wsSug, 'Ý kiến Hiến kế');
 
     const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
@@ -736,7 +749,7 @@ app.post('/api/clear-data', (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   const localIps = getLocalIpAddresses();
   console.log(`=======================================================`);
   console.log(`🏥 HỆ THỐNG KHẢO SÁT HÀI LÒNG NHÂN VIÊN Y TẾ (500 NV)`);
@@ -747,4 +760,13 @@ app.listen(PORT, () => {
     console.log(`📱 QR Code link: http://${localIps[0]}:${PORT}`);
   }
   console.log(`=======================================================`);
+});
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`⚠️ Cảnh báo xung đột cổng: Cổng ${PORT} đang được tiến trình khác sử dụng.`);
+    console.error(`Gợi ý: Kiểm tra hoặc cấu hình PORT qua biến môi trường (ví dụ: PORT=3001 node server.js).`);
+  } else {
+    console.error('Lỗi khởi động máy chủ:', err);
+  }
 });

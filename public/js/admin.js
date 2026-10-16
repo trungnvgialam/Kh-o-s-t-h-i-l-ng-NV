@@ -9,6 +9,16 @@ let commitmentDoughnutInstance = null;
 let qrCodeInstance = null;
 let systemConfig = null;
 
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   initDashboard();
   setupEventListeners();
@@ -432,10 +442,10 @@ function updateFeedbackWall(suggestions) {
 
   container.innerHTML = suggestions.slice(0, 6).map(s => `
     <div class="feedback-card">
-      <div class="feedback-quote">"${s.text}"</div>
+      <div class="feedback-quote">"${escapeHtml(s.text)}"</div>
       <div class="feedback-meta">
-        <span>${roleNames[s.role] || 'Nhân viên'} • ${deptNames[s.department] || ''}</span>
-        <span style="font-weight:700; color:#0d9488;">Đánh giá: ${s.score || '8'}/10</span>
+        <span>${escapeHtml(roleNames[s.role] || 'Nhân viên')} • ${escapeHtml(deptNames[s.department] || '')}</span>
+        <span style="font-weight:700; color:#0d9488;">Đánh giá: ${escapeHtml(String(s.score || '8'))}/10</span>
       </div>
     </div>
   `).join('');
@@ -460,12 +470,12 @@ async function loadResponsesTable(page = 1) {
 
         tbody.innerHTML = data.items.map(item => `
           <tr>
-            <td><strong style="color:#0f766e;">${item.id}</strong></td>
+            <td><strong style="color:#0f766e;">${escapeHtml(item.id)}</strong></td>
             <td>${new Date(item.submittedAt).toLocaleDateString('vi-VN')}</td>
-            <td>${deptMap[item.demographics?.department] || item.demographics?.department}</td>
-            <td>${roleMap[item.demographics?.role] || item.demographics?.role}</td>
-            <td><span class="kpi-badge badge-good">${item.overall?.score || 8} / 10</span></td>
-            <td><span style="font-size:12px; color:#475569;">${item.overall?.suggestions ? item.overall.suggestions.slice(0, 35) + '...' : '<em style="color:#94a3b8">Không có</em>'}</span></td>
+            <td>${escapeHtml(deptMap[item.demographics?.department] || item.demographics?.department || '')}</td>
+            <td>${escapeHtml(roleMap[item.demographics?.role] || item.demographics?.role || '')}</td>
+            <td><span class="kpi-badge badge-good">${escapeHtml(String(item.overall?.score || 8))} / 10</span></td>
+            <td><span style="font-size:12px; color:#475569;">${item.overall?.suggestions ? escapeHtml(item.overall.suggestions.slice(0, 35)) + (item.overall.suggestions.length > 35 ? '...' : '') : '<em style="color:#94a3b8">Không có</em>'}</span></td>
           </tr>
         `).join('');
       }

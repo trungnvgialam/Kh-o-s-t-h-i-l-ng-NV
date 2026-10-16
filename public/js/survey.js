@@ -258,6 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const parentCard = document.getElementById(`q-card-${qid}`);
         if (parentCard) {
+          parentCard.classList.remove('unanswered-error');
           parentCard.classList.add('answered');
           parentCard.querySelectorAll('.likert-btn').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
@@ -276,7 +277,11 @@ document.addEventListener('DOMContentLoaded', () => {
         state.overall.score = val;
         document.querySelectorAll('.scale-btn[data-type="overall-score"]').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        document.getElementById('q-card-overall-score')?.classList.add('answered');
+        const card = document.getElementById('q-card-overall-score');
+        if (card) {
+          card.classList.remove('unanswered-error');
+          card.classList.add('answered');
+        }
         saveDraft();
         updateProgress();
       }
@@ -290,7 +295,11 @@ document.addEventListener('DOMContentLoaded', () => {
         state.overall.commitment = val;
         document.querySelectorAll('.commitment-item').forEach(i => i.classList.remove('active'));
         item.classList.add('active');
-        document.getElementById('q-card-commitment')?.classList.add('answered');
+        const card = document.getElementById('q-card-commitment');
+        if (card) {
+          card.classList.remove('unanswered-error');
+          card.classList.add('answered');
+        }
         saveDraft();
         updateProgress();
       }
@@ -304,7 +313,11 @@ document.addEventListener('DOMContentLoaded', () => {
         state.overall.enps = val;
         document.querySelectorAll('.scale-btn[data-type="enps"]').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        document.getElementById('q-card-enps')?.classList.add('answered');
+        const card = document.getElementById('q-card-enps');
+        if (card) {
+          card.classList.remove('unanswered-error');
+          card.classList.add('answered');
+        }
         saveDraft();
         updateProgress();
       }
@@ -382,22 +395,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function validateStep(step) {
     if (step === 1) {
+      document.querySelectorAll('.form-group').forEach(el => el.classList.remove('unanswered-error'));
       const { department, role, experience, gender, degree } = state.demographics;
-      if (!department || !role || !experience || !gender || !degree) {
+      const missingFields = [];
+      if (!department) missingFields.push('demo-dept');
+      if (!role) missingFields.push('demo-role');
+      if (!experience) missingFields.push('demo-exp');
+      if (!degree) missingFields.push('demo-degree');
+      if (!gender) missingFields.push('gender-group');
+
+      if (missingFields.length > 0) {
+        missingFields.forEach(id => {
+          if (id === 'gender-group') {
+            document.querySelector('.radio-pill-group')?.closest('.form-group')?.classList.add('unanswered-error');
+          } else {
+            document.getElementById(id)?.closest('.form-group')?.classList.add('unanswered-error');
+          }
+        });
         alert('Vui lòng hoàn thành đầy đủ thông tin phân loại nhân khẩu học để tiếp tục.');
+        const first = missingFields[0] === 'gender-group' 
+          ? document.querySelector('.radio-pill-group')
+          : document.getElementById(missingFields[0]);
+        first?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return false;
       }
       return true;
     }
 
     if (step === 2) {
-      // Must answer all questions in Groups A & B
+      document.querySelectorAll('.q-card').forEach(c => c.classList.remove('unanswered-error'));
       const missing = [];
       [...SURVEY_CONFIG.groups[0].questions, ...SURVEY_CONFIG.groups[1].questions].forEach(q => {
         if (!state.answers[q.id]) missing.push(q.id);
       });
       if (missing.length > 0) {
-        alert(`Bạn còn ${missing.length} câu hỏi chưa trả lời trong phần này. Vui lòng chọn điểm đánh giá cho tất cả câu hỏi.`);
+        missing.forEach(id => document.getElementById(`q-card-${id}`)?.classList.add('unanswered-error'));
+        alert(`Bạn còn ${missing.length} câu hỏi chưa trả lời trong phần này. Vui lòng chọn điểm đánh giá cho các câu được đánh dấu đỏ.`);
         const firstMissing = document.getElementById(`q-card-${missing[0]}`);
         if (firstMissing) firstMissing.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return false;
@@ -406,13 +439,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (step === 3) {
-      // Must answer all questions in Groups C & D
+      document.querySelectorAll('.q-card').forEach(c => c.classList.remove('unanswered-error'));
       const missing = [];
       [...SURVEY_CONFIG.groups[2].questions, ...SURVEY_CONFIG.groups[3].questions].forEach(q => {
         if (!state.answers[q.id]) missing.push(q.id);
       });
       if (missing.length > 0) {
-        alert(`Bạn còn ${missing.length} câu hỏi chưa trả lời trong phần này. Vui lòng chọn điểm đánh giá cho tất cả câu hỏi.`);
+        missing.forEach(id => document.getElementById(`q-card-${id}`)?.classList.add('unanswered-error'));
+        alert(`Bạn còn ${missing.length} câu hỏi chưa trả lời trong phần này. Vui lòng chọn điểm đánh giá cho các câu được đánh dấu đỏ.`);
         const firstMissing = document.getElementById(`q-card-${missing[0]}`);
         if (firstMissing) firstMissing.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return false;
@@ -421,12 +455,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (step === 4) {
-      // Must answer Group E and Overall score, commitment, eNPS
+      document.querySelectorAll('.q-card').forEach(c => c.classList.remove('unanswered-error'));
       const missingE = [];
       SURVEY_CONFIG.groups[4].questions.forEach(q => {
         if (!state.answers[q.id]) missingE.push(q.id);
       });
       if (missingE.length > 0) {
+        missingE.forEach(id => document.getElementById(`q-card-${id}`)?.classList.add('unanswered-error'));
         alert(`Bạn còn ${missingE.length} câu hỏi trong Nhóm E chưa trả lời.`);
         const firstMissing = document.getElementById(`q-card-${missingE[0]}`);
         if (firstMissing) firstMissing.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -434,20 +469,26 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (state.overall.score === null) {
+        const card = document.getElementById('q-card-overall-score');
+        card?.classList.add('unanswered-error');
         alert('Vui lòng cho điểm đánh giá mức độ hài lòng chung đối với Bệnh viện (Thang điểm 1-10).');
-        document.getElementById('q-card-overall-score')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        card?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return false;
       }
 
       if (!state.overall.commitment) {
+        const card = document.getElementById('q-card-commitment');
+        card?.classList.add('unanswered-error');
         alert('Vui lòng chọn dự định gắn bó với bệnh viện trong 3-5 năm tới.');
-        document.getElementById('q-card-commitment')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        card?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return false;
       }
 
       if (state.overall.enps === null) {
+        const card = document.getElementById('q-card-enps');
+        card?.classList.add('unanswered-error');
         alert('Vui lòng chọn mức độ sẵn lòng giới thiệu bệnh viện (Thang điểm 0-10).');
-        document.getElementById('q-card-enps')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        card?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return false;
       }
 
