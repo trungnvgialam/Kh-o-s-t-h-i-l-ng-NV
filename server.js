@@ -41,33 +41,106 @@ function getLocalIpAddresses() {
   return addresses;
 }
 
-// Read all surveys safely
-function readSurveys() {
-  try {
+// IN-MEMORY DATA STORE & SAFE CONCURRENCY ENGINE
+let cachedSurveys = [];
+try {
+  if (fs.existsSync(DATA_FILE)) {
     const raw = fs.readFileSync(DATA_FILE, 'utf8');
-    return JSON.parse(raw);
+    cachedSurveys = JSON.parse(raw);
+  }
+} catch (err) {
+  console.error('Lỗi khi đọc file dữ liệu khảo sát ban đầu:', err);
+  cachedSurveys = [];
+}
+
+// Compute atomic monotonic ID counter to prevent duplicate IDs forever
+let maxIdCounter = 0;
+cachedSurveys.forEach(s => {
+  const match = String(s.id).match(/^NV-(\d+)$/);
+  if (match) {
+    const num = parseInt(match[1], 10);
+    if (num > maxIdCounter) maxIdCounter = num;
+  }
+});
+
+// Serialized async queue to guarantee non-blocking, conflict-free disk persistence
+let writePromise = Promise.resolve();
+
+function scheduleDiskWrite() {
+  writePromise = writePromise.then(async () => {
+    await persistSurveysToDisk();
+  }).catch(err => {
+    console.error('Lỗi hàng đợi ghi đĩa:', err);
+  });
+  return writePromise;
+}
+
+async function persistSurveysToDisk() {
+  const jsonStr = JSON.stringify(cachedSurveys, null, 2);
+  const tempFile = path.join(DATA_DIR, `surveys_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.tmp`);
+  const backupFile = path.join(DATA_DIR, 'surveys.backup.json');
+
+  try {
+    // 1. Write unique temporary file
+    await fs.promises.writeFile(tempFile, jsonStr, 'utf8');
+
+    // 2. Backup existing file if non-empty
+    if (fs.existsSync(DATA_FILE) && fs.statSync(DATA_FILE).size > 10) {
+      try {
+        await fs.promises.copyFile(DATA_FILE, backupFile);
+      } catch (_) {}
+    }
+
+    // 3. Atomically replace with retry for Windows EBUSY / locking
+    let renamed = false;
+    for (let i = 0; i < 5; i++) {
+      try {
+        await fs.promises.rename(tempFile, DATA_FILE);
+        renamed = true;
+        break;
+      } catch (err) {
+        await new Promise(res => setTimeout(res, 50));
+      }
+    }
+
+    // Fallback direct write if Windows rename is held
+    if (!renamed) {
+      await fs.promises.writeFile(DATA_FILE, jsonStr, 'utf8');
+      try { await fs.promises.unlink(tempFile); } catch (_) {}
+    }
   } catch (err) {
-    console.error('Error reading survey file:', err);
-    return [];
+    console.error('Lỗi khi ghi đĩa dữ liệu khảo sát:', err);
+    try { if (fs.existsSync(tempFile)) await fs.promises.unlink(tempFile); } catch (_) {}
   }
 }
 
-// Write surveys atomically
+// Read all surveys safely from memory (O(1), zero disk lock)
+function readSurveys() {
+  return cachedSurveys;
+}
+
+// Write/update surveys in memory & schedule disk write
 function writeSurveys(data) {
-  const tempFile = `${DATA_FILE}.tmp`;
-  fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf8');
-  fs.renameSync(tempFile, DATA_FILE);
+  cachedSurveys = data;
+  maxIdCounter = 0;
+  cachedSurveys.forEach(s => {
+    const match = String(s.id).match(/^NV-(\d+)$/);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (num > maxIdCounter) maxIdCounter = num;
+    }
+  });
+  scheduleDiskWrite();
 }
 
 // API: Get survey config & system status
 app.get('/api/config', (req, res) => {
-  const surveys = readSurveys();
   const localIps = getLocalIpAddresses();
   const primaryIp = localIps.length > 0 ? localIps[0] : 'localhost';
   
   res.json({
     config: SURVEY_CONFIG,
-    totalCount: surveys.length,
+    totalCount: cachedSurveys.length,
     target: SURVEY_CONFIG.targetRespondents,
     localIps,
     networkUrl: `http://${primaryIp}:${PORT}`,
@@ -75,7 +148,7 @@ app.get('/api/config', (req, res) => {
   });
 });
 
-// API: Submit a response
+// API: Submit a response (Thread-safe, Concurrency-proof, Validated & Sanitized)
 app.post('/api/submit', (req, res) => {
   try {
     const body = req.body;
@@ -83,24 +156,51 @@ app.post('/api/submit', (req, res) => {
       return res.status(400).json({ success: false, message: 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin.' });
     }
 
-    const surveys = readSurveys();
-    const newId = `NV-${String(surveys.length + 1).padStart(4, '0')}`;
+    // Atomic monotonic ID generation
+    maxIdCounter++;
+    const newId = `NV-${String(maxIdCounter).padStart(4, '0')}`;
+
+    // Clean & validate Likert answers (1 to 5)
+    const sanitizedAnswers = {};
+    if (typeof body.answers === 'object') {
+      for (const [k, v] of Object.entries(body.answers)) {
+        const num = parseInt(v, 10);
+        if (!isNaN(num) && num >= 1 && num <= 5) {
+          sanitizedAnswers[k] = num;
+        }
+      }
+    }
+
+    const overallScore = Math.max(1, Math.min(10, parseInt(body.overall?.score, 10) || 8));
+    const enpsScore = Math.max(0, Math.min(10, parseInt(body.overall?.enps, 10) || 8));
+    const rawSuggestions = String(body.overall?.suggestions || '').trim();
+    // Strip HTML/script tags to prevent XSS
+    const cleanSuggestions = rawSuggestions.replace(/<[^>]*>?/gm, '').slice(0, 2000);
 
     const submission = {
       id: newId,
       submittedAt: new Date().toISOString(),
-      demographics: body.demographics,
-      answers: body.answers, // { a1: 4, a2: 5, ... }
+      demographics: {
+        department: String(body.demographics?.department || 'other'),
+        role: String(body.demographics?.role || 'other'),
+        experience: String(body.demographics?.experience || 'other'),
+        gender: String(body.demographics?.gender || 'khac'),
+        degree: String(body.demographics?.degree || 'other')
+      },
+      answers: sanitizedAnswers,
       overall: {
-        score: Number(body.overall?.score) || 8,
-        commitment: body.overall?.commitment || 'chac_chan',
-        enps: Number(body.overall?.enps) || 8,
-        suggestions: (body.overall?.suggestions || '').trim()
+        score: overallScore,
+        commitment: String(body.overall?.commitment || 'chac_chan'),
+        enps: enpsScore,
+        suggestions: cleanSuggestions
       }
     };
 
-    surveys.push(submission);
-    writeSurveys(surveys);
+    // Atomic in-memory push
+    cachedSurveys.push(submission);
+    
+    // Asynchronous non-blocking queue persist
+    scheduleDiskWrite();
 
     res.json({
       success: true,

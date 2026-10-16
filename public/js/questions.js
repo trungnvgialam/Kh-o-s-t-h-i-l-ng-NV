@@ -1,12 +1,14 @@
 /**
- * BỘ CÂU HỎI KHẢO SÁT SỰ HÀI LÒNG NHÂN VIÊN Y TẾ (CLIENT-SIDE)
+ * BỘ CÂU HỎI KHẢO SÁT SỰ HÀI LÒNG NHÂN VIÊN Y TẾ
+ * Xây dựng dựa trên Hướng dẫn và Bộ tiêu chí chất lượng bệnh viện của Bộ Y tế Việt Nam
  */
+
 const SURVEY_CONFIG = {
   title: "Khảo Sát Sự Hài Lòng Nhân Viên Y Tế",
   targetRespondents: 500,
   organization: "Cơ Sở Y Tế / Bệnh Viện",
   description: "Khảo sát này được thực hiện nhằm ghi nhận ý kiến khách quan của toàn thể cán bộ, nhân viên y tế về môi trường làm việc, chế độ đãi ngộ, quan hệ đồng nghiệp và công tác quản lý. Kết quả là căn cứ quan trọng để Ban Giám đốc hoạch định chính sách cải tiến, nâng cao đời sống và sự gắn kết của nhân viên.",
-  confidentialityNote: "Khảo sát hoàn toàn ẨN DANH & BẢO MẬT. Mọi thông tin phản hồi chỉ sử dụng cho mục đích phân tích thống kê tổng hợp và nâng cao chất lượng bệnh viện.",
+  confidentialityNote: "Khảo sát hoàn toàn ẨN DANH. Mọi thông tin phản hồi chỉ sử dụng cho mục đích phân tích thống kê tổng hợp và nâng cao chất lượng bệnh viện.",
   
   demographics: [
     {
@@ -75,7 +77,7 @@ const SURVEY_CONFIG = {
   likertScale: [
     { value: 1, label: "Rất không hài lòng", shortLabel: "Rất KHL", color: "#ef4444", emoji: "😡" },
     { value: 2, label: "Không hài lòng", shortLabel: "Không HL", color: "#f97316", emoji: "🙁" },
-    { value: 3, label: "Bình thường", shortLabel: "Bình thường", color: "#eab308", emoji: "😐" },
+    { value: 3, label: "Bình thường / Trung lập", shortLabel: "Bình thường", color: "#eab308", emoji: "😐" },
     { value: 4, label: "Hài lòng", shortLabel: "Hài lòng", color: "#10b981", emoji: "🙂" },
     { value: 5, label: "Rất hài lòng", shortLabel: "Rất HL", color: "#06b6d4", emoji: "😍" }
   ],
@@ -160,7 +162,7 @@ const SURVEY_CONFIG = {
       min: 1,
       max: 10,
       minLabel: "1 - Rất thất vọng",
-      maxLabel: "10 - Rất hài lòng",
+      maxLabel: "10 - Tuyệt đối hài lòng",
       required: true
     },
     {
@@ -195,3 +197,10 @@ const SURVEY_CONFIG = {
     }
   ]
 };
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = SURVEY_CONFIG;
+}
+if (typeof window !== 'undefined') {
+  window.SURVEY_CONFIG = SURVEY_CONFIG;
+}
