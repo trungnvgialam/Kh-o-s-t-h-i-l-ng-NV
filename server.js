@@ -461,22 +461,35 @@ function computeStatistics(surveys, filterDept = 'all') {
   };
 }
 
-// API: Get comprehensive statistics (Admin only)
+// API: Get comprehensive statistics (Admin only - Hỗ trợ lọc theo khối & giai đoạn)
 app.get('/api/stats', requireAdmin, (req, res) => {
   const filterDept = req.query.department || 'all';
-  const surveys = readSurveys();
+  const startDate = req.query.startDate || null;
+  const endDate = req.query.endDate || null;
+  const period = req.query.period || 'all';
+
+  const surveys = db.getAllSurveys(filterDept, startDate, endDate);
   const stats = computeStatistics(surveys, filterDept);
+  stats.filterInfo = {
+    department: filterDept,
+    startDate,
+    endDate,
+    period,
+    totalAllTime: db.getSurveyCount()
+  };
   res.json(stats);
 });
 
-// API: Get list of responses with pagination & search (Admin only - Powered by SQLite)
+// API: Get list of responses with pagination & search (Admin only - Hỗ trợ lọc theo khối & giai đoạn)
 app.get('/api/responses', requireAdmin, (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 20;
   const search = (req.query.search || '').trim();
   const dept = req.query.department || 'all';
+  const startDate = req.query.startDate || null;
+  const endDate = req.query.endDate || null;
 
-  const result = db.getPaginatedResponses({ page, limit, search, department: dept });
+  const result = db.getPaginatedResponses({ page, limit, search, department: dept, startDate, endDate });
   res.json(result);
 });
 
@@ -528,20 +541,29 @@ const COMMITMENT_LABELS = {
   unknown: 'Chưa xác định'
 };
 
-// API: Export Excel (Admin only)
+// API: Export Excel (Admin only - Hỗ trợ lọc theo khối & giai đoạn)
 app.get('/api/export-excel', requireAdmin, (req, res) => {
   try {
     const deptFilter = req.query.department || 'all';
-    let surveys = readSurveys();
+    const startDate = req.query.startDate || null;
+    const endDate = req.query.endDate || null;
+
+    let surveys = db.getAllSurveys(deptFilter, startDate, endDate);
     const isFiltered = deptFilter && deptFilter !== 'all';
-    if (isFiltered) {
-      surveys = surveys.filter(s => s.demographics?.department === deptFilter);
-    }
-    const stats = computeStatistics(surveys);
+    const stats = computeStatistics(surveys, deptFilter);
 
     const wb = XLSX.utils.book_new();
 
-    const scopeText = isFiltered ? `Phạm vi báo cáo: ${DEPT_LABELS[deptFilter] || deptFilter}` : 'Phạm vi báo cáo: Toàn bệnh viện';
+    const scopeDept = isFiltered ? `Khối: ${DEPT_LABELS[deptFilter] || deptFilter}` : 'Toàn bệnh viện';
+    let periodText = 'Giai đoạn: Toàn bộ thời gian';
+    if (startDate && endDate) {
+      periodText = `Giai đoạn: Từ ${startDate} đến ${endDate}`;
+    } else if (startDate) {
+      periodText = `Giai đoạn: Từ ngày ${startDate}`;
+    } else if (endDate) {
+      periodText = `Giai đoạn: Đến ngày ${endDate}`;
+    }
+    const scopeText = `Phạm vi báo cáo: ${scopeDept} | ${periodText}`;
 
     // 1. Sheet: Báo cáo Tổng hợp (Summary)
     const summaryData = [
@@ -640,7 +662,8 @@ app.get('/api/export-excel', requireAdmin, (req, res) => {
 
     const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
     const fileSuffix = isFiltered ? `_${deptFilter}` : '';
-    const filename = `Bao_Cao_Khao_Sat_Hai_Long_NVYT${fileSuffix}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    const dateSuffix = startDate && endDate ? `_${startDate}_den_${endDate}` : `_${new Date().toISOString().slice(0, 10)}`;
+    const filename = `Bao_Cao_Khao_Sat_Hai_Long_NVYT${fileSuffix}${dateSuffix}.xlsx`;
 
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

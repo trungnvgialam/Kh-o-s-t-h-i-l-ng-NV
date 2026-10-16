@@ -58,12 +58,85 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupEventListeners();
 });
 
+function getActiveDateRange() {
+  const period = document.getElementById('filter-period')?.value || 'all';
+  const now = new Date();
+  
+  function formatDate(d) {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  let startDate = null;
+  let endDate = null;
+  let labelText = 'Toàn bộ thời gian';
+
+  if (period === '7days') {
+    const start = new Date(now);
+    start.setDate(now.getDate() - 7);
+    startDate = formatDate(start);
+    endDate = formatDate(now);
+    labelText = `7 ngày qua (${startDate} đến ${endDate})`;
+  } else if (period === '30days') {
+    const start = new Date(now);
+    start.setDate(now.getDate() - 30);
+    startDate = formatDate(start);
+    endDate = formatDate(now);
+    labelText = `30 ngày qua (${startDate} đến ${endDate})`;
+  } else if (period === 'this_month') {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    startDate = formatDate(start);
+    endDate = formatDate(now);
+    labelText = `Tháng ${now.getMonth() + 1}/${now.getFullYear()} (${startDate} đến ${endDate})`;
+  } else if (period === 'last_month') {
+    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const end = new Date(now.getFullYear(), now.getMonth(), 0);
+    startDate = formatDate(start);
+    endDate = formatDate(end);
+    labelText = `Tháng ${start.getMonth() + 1}/${start.getFullYear()} (${startDate} đến ${endDate})`;
+  } else if (period === 'this_quarter') {
+    const currentQuarter = Math.floor(now.getMonth() / 3);
+    const start = new Date(now.getFullYear(), currentQuarter * 3, 1);
+    startDate = formatDate(start);
+    endDate = formatDate(now);
+    labelText = `Quý ${currentQuarter + 1}/${now.getFullYear()} (${startDate} đến ${endDate})`;
+  } else if (period === 'this_year') {
+    const start = new Date(now.getFullYear(), 0, 1);
+    startDate = formatDate(start);
+    endDate = formatDate(now);
+    labelText = `Năm ${now.getFullYear()} (${startDate} đến ${endDate})`;
+  } else if (period === 'custom') {
+    const customStart = document.getElementById('filter-start-date')?.value || '';
+    const customEnd = document.getElementById('filter-end-date')?.value || '';
+    startDate = customStart || null;
+    endDate = customEnd || null;
+    if (startDate && endDate) {
+      labelText = `Từ ${startDate} đến ${endDate}`;
+    } else if (startDate) {
+      labelText = `Từ ngày ${startDate}`;
+    } else if (endDate) {
+      labelText = `Đến ngày ${endDate}`;
+    } else {
+      labelText = 'Khoảng ngày tùy chọn (Chưa chọn ngày)';
+    }
+  }
+
+  return { period, startDate, endDate, labelText };
+}
+
 function updateExportExcelLink() {
   const exportBtn = document.getElementById('btn-export-excel');
   if (exportBtn) {
     const token = getAdminToken();
     const dept = document.getElementById('filter-department')?.value || 'all';
-    exportBtn.href = `/api/export-excel?department=${encodeURIComponent(dept)}&token=${encodeURIComponent(token)}`;
+    const { startDate, endDate, period } = getActiveDateRange();
+    let url = `/api/export-excel?department=${encodeURIComponent(dept)}&token=${encodeURIComponent(token)}`;
+    if (startDate) url += `&startDate=${encodeURIComponent(startDate)}`;
+    if (endDate) url += `&endDate=${encodeURIComponent(endDate)}`;
+    if (period) url += `&period=${encodeURIComponent(period)}`;
+    exportBtn.href = url;
   }
 }
 
@@ -149,9 +222,24 @@ function renderQrCode(url) {
 // 2. Load Analytics & Statistics
 async function loadDashboardStats() {
   const deptFilter = document.getElementById('filter-department')?.value || 'all';
+  const { period, startDate, endDate, labelText } = getActiveDateRange();
+
+  // Cập nhật nhãn thông tin giai đoạn đang xem
+  const periodLabelEl = document.getElementById('period-text-label');
+  if (periodLabelEl) {
+    periodLabelEl.innerText = labelText;
+  }
+
+  // Đồng bộ đường dẫn xuất Excel
+  updateExportExcelLink();
+
+  let url = `/api/stats?department=${encodeURIComponent(deptFilter)}`;
+  if (startDate) url += `&startDate=${encodeURIComponent(startDate)}`;
+  if (endDate) url += `&endDate=${encodeURIComponent(endDate)}`;
+  if (period) url += `&period=${encodeURIComponent(period)}`;
 
   try {
-    const res = await fetch(`/api/stats?department=${deptFilter}`, {
+    const res = await fetch(url, {
       headers: { 'Authorization': 'Bearer ' + getAdminToken() }
     });
     if (res.status === 401) {
@@ -550,9 +638,14 @@ function updateFeedbackWall(suggestions) {
 async function loadResponsesTable(page = 1) {
   const search = document.getElementById('table-search-input')?.value || '';
   const dept = document.getElementById('filter-department')?.value || 'all';
+  const { startDate, endDate } = getActiveDateRange();
+
+  let url = `/api/responses?page=${page}&limit=10&search=${encodeURIComponent(search)}&department=${encodeURIComponent(dept)}`;
+  if (startDate) url += `&startDate=${encodeURIComponent(startDate)}`;
+  if (endDate) url += `&endDate=${encodeURIComponent(endDate)}`;
 
   try {
-    const res = await fetch(`/api/responses?page=${page}&limit=10&search=${encodeURIComponent(search)}&department=${dept}`, {
+    const res = await fetch(url, {
       headers: { 'Authorization': 'Bearer ' + getAdminToken() }
     });
     if (res.status === 401) {
@@ -566,7 +659,7 @@ async function loadResponsesTable(page = 1) {
     const tbody = document.getElementById('responses-table-body');
     if (tbody) {
       if (data.items.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">Không tìm thấy bản ghi khảo sát nào.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">Không tìm thấy bản ghi khảo sát nào trong giai đoạn này.</td></tr>';
       } else {
         const roleMap = { bacsi: 'Bác sĩ', dieuduong: 'Điều dưỡng', kythuatvien: 'KTV', duocsi: 'Dược sĩ', quanly_hanhchinh: 'Hành chính', hotro: 'Hộ lý / Y công' };
         const deptMap = { noi: 'Lâm sàng Nội', ngoai: 'Lâm sàng Ngoại', capcuu: 'Khám bệnh - Cấp cứu', canlamsang: 'Cận lâm sàng', hanhchinh: 'Hành chính' };
@@ -606,6 +699,33 @@ async function loadResponsesTable(page = 1) {
 function setupEventListeners() {
   // Department filter change
   document.getElementById('filter-department')?.addEventListener('change', () => {
+    updateExportExcelLink();
+    loadDashboardStats();
+    loadResponsesTable(1);
+  });
+
+  // Period filter change
+  document.getElementById('filter-period')?.addEventListener('change', (e) => {
+    const isCustom = e.target.value === 'custom';
+    const customContainer = document.getElementById('custom-date-container');
+    if (customContainer) {
+      customContainer.style.display = isCustom ? 'inline-flex' : 'none';
+    }
+    if (!isCustom) {
+      updateExportExcelLink();
+      loadDashboardStats();
+      loadResponsesTable(1);
+    }
+  });
+
+  // Custom date inputs change
+  document.getElementById('filter-start-date')?.addEventListener('change', () => {
+    updateExportExcelLink();
+    loadDashboardStats();
+    loadResponsesTable(1);
+  });
+
+  document.getElementById('filter-end-date')?.addEventListener('change', () => {
     updateExportExcelLink();
     loadDashboardStats();
     loadResponsesTable(1);

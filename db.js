@@ -313,23 +313,55 @@ function performBackupSync() {
 // API Functions giao tiếp với Database
 
 /**
- * Lấy tất cả phiếu khảo sát (hỗ trợ lọc theo khối)
+ * Lấy tất cả phiếu khảo sát (hỗ trợ lọc theo khối và giai đoạn thời gian)
  */
-function getAllSurveys(deptFilter = 'all') {
-  let rows;
+function getAllSurveys(deptFilter = 'all', startDate = null, endDate = null) {
+  let query = 'SELECT * FROM surveys WHERE 1=1';
+  const params = [];
+
   if (deptFilter && deptFilter !== 'all') {
-    rows = db.prepare('SELECT * FROM surveys WHERE department = ? ORDER BY submitted_at ASC').all(deptFilter);
-  } else {
-    rows = db.prepare('SELECT * FROM surveys ORDER BY submitted_at ASC').all();
+    query += ' AND department = ?';
+    params.push(deptFilter);
   }
+
+  if (startDate) {
+    query += ' AND date(submitted_at) >= date(?)';
+    params.push(startDate);
+  }
+
+  if (endDate) {
+    query += ' AND date(submitted_at) <= date(?)';
+    params.push(endDate);
+  }
+
+  query += ' ORDER BY submitted_at ASC';
+  const rows = db.prepare(query).all(...params);
   return rows.map(rowToSurvey);
 }
 
 /**
- * Đếm tổng số phiếu
+ * Đếm tổng số phiếu (hỗ trợ lọc theo khối và giai đoạn thời gian)
  */
-function getSurveyCount() {
-  const row = db.prepare('SELECT COUNT(*) as count FROM surveys').get();
+function getSurveyCount(deptFilter = 'all', startDate = null, endDate = null) {
+  let query = 'SELECT COUNT(*) as count FROM surveys WHERE 1=1';
+  const params = [];
+
+  if (deptFilter && deptFilter !== 'all') {
+    query += ' AND department = ?';
+    params.push(deptFilter);
+  }
+
+  if (startDate) {
+    query += ' AND date(submitted_at) >= date(?)';
+    params.push(startDate);
+  }
+
+  if (endDate) {
+    query += ' AND date(submitted_at) <= date(?)';
+    params.push(endDate);
+  }
+
+  const row = db.prepare(query).get(...params);
   return row ? row.count : 0;
 }
 
@@ -404,15 +436,25 @@ function clearAllSurveys() {
 }
 
 /**
- * Lấy danh sách phản hồi phân trang và tìm kiếm
+ * Lấy danh sách phản hồi phân trang và tìm kiếm (hỗ trợ lọc theo khối & giai đoạn)
  */
-function getPaginatedResponses({ page = 1, limit = 20, search = '', department = 'all' }) {
+function getPaginatedResponses({ page = 1, limit = 20, search = '', department = 'all', startDate = null, endDate = null }) {
   let query = 'SELECT * FROM surveys WHERE 1=1';
   const params = [];
 
   if (department && department !== 'all') {
     query += ' AND department = ?';
     params.push(department);
+  }
+
+  if (startDate) {
+    query += ' AND date(submitted_at) >= date(?)';
+    params.push(startDate);
+  }
+
+  if (endDate) {
+    query += ' AND date(submitted_at) <= date(?)';
+    params.push(endDate);
   }
 
   if (search) {

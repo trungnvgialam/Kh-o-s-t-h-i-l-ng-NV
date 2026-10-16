@@ -77,24 +77,55 @@
       </div>
     </section>
 
-    <!-- FILTER TOOLBAR -->
+    <!-- FILTER TOOLBAR: KHỐI & GIAI ĐOÀN KHẢO SÁT -->
     <section class="filter-toolbar">
       <div class="filter-left">
-        <span class="filter-label">🔍 Lọc dữ liệu theo Khối:</span>
-        <select id="filter-department" class="filter-select">
-          <option value="all">-- Tất cả các Khối / Khoa phòng toàn viện --</option>
-          <option value="noi">Khối Lâm sàng Nội</option>
-          <option value="ngoai">Khối Lâm sàng Ngoại</option>
-          <option value="capcuu">Khối Khám bệnh & Cấp cứu</option>
-          <option value="canlamsang">Khối Cận lâm sàng & Dược</option>
-          <option value="hanhchinh">Khối Phòng ban chức năng</option>
-        </select>
-        <button type="button" class="btn-outline" id="btn-refresh" style="padding: 7px 12px;">
-          🔄 Tải lại số liệu
+        <!-- Lọc theo Khối -->
+        <div class="filter-item">
+          <span class="filter-label">🏥 Khối:</span>
+          <select id="filter-department" class="filter-select">
+            <option value="all">-- Toàn viện (Tất cả các Khối) --</option>
+            <option value="noi">Khối Lâm sàng Nội</option>
+            <option value="ngoai">Khối Lâm sàng Ngoại</option>
+            <option value="capcuu">Khối Khám bệnh & Cấp cứu</option>
+            <option value="canlamsang">Khối Cận lâm sàng & Dược</option>
+            <option value="hanhchinh">Khối Phòng ban chức năng</option>
+          </select>
+        </div>
+
+        <!-- Lọc theo Giai đoạn -->
+        <div class="filter-item">
+          <span class="filter-label">📅 Giai đoạn:</span>
+          <select id="filter-period" class="filter-select">
+            <option value="all">Toàn bộ thời gian</option>
+            <option value="7days">7 ngày gần nhất</option>
+            <option value="30days">30 ngày gần nhất</option>
+            <option value="this_month">Tháng này</option>
+            <option value="last_month">Tháng trước</option>
+            <option value="this_quarter">Quý này</option>
+            <option value="this_year">Năm nay</option>
+            <option value="custom">Tùy chọn khoảng ngày...</option>
+          </select>
+        </div>
+
+        <!-- Khung chọn ngày tùy chỉnh (Hiện ra khi chọn custom) -->
+        <div id="custom-date-container" class="filter-item custom-date-box" style="display: none;">
+          <span class="filter-label-sub">Từ ngày:</span>
+          <input type="date" id="filter-start-date" class="filter-date-input" title="Ngày bắt đầu">
+          <span class="filter-label-sub">Đến:</span>
+          <input type="date" id="filter-end-date" class="filter-date-input" title="Ngày kết thúc">
+        </div>
+
+        <button type="button" class="btn-outline" id="btn-refresh" style="padding: 7px 14px;" title="Cập nhật lại toàn bộ số liệu theo bộ lọc">
+          🔄 Áp dụng / Làm mới
         </button>
       </div>
-      <div style="font-size: 13px; color: #64748b;">
-        Phương pháp tính: Điểm trung bình Likert 5 mức & Thang CSI (%)
+
+      <div class="filter-right">
+        <span class="period-badge" id="period-info-badge">
+          <span class="period-badge-icon">📌</span>
+          <span>Đang tổng hợp: <strong id="period-text-label">Toàn bộ thời gian</strong></span>
+        </span>
       </div>
     </section>
 

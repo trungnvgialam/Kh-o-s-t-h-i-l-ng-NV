@@ -249,6 +249,62 @@ body {
   border-color: var(--teal-600);
 }
 
+.filter-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-label-sub {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--navy-700);
+}
+
+.filter-date-input {
+  padding: 7px 10px;
+  font-size: 13px;
+  border: 1.5px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  background: #ffffff;
+  color: var(--navy-900);
+  font-family: inherit;
+  outline: none;
+  font-weight: 500;
+}
+
+.filter-date-input:focus {
+  border-color: var(--teal-600);
+  box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.15);
+}
+
+.custom-date-box {
+  background: #f8fafc;
+  border: 1.5px dashed #cbd5e1;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.period-badge {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+
+.period-badge-icon {
+  font-size: 13px;
+}
+
 /* 4 KEY KPI METRIC CARDS */
 .kpi-grid {
   display: grid;
