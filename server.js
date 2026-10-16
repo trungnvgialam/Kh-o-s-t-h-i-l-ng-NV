@@ -72,9 +72,11 @@ function requireAdmin(req, res, next) {
 }
 
 // Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-}
+try {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+} catch (_) {}
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -818,30 +820,35 @@ app.post('/api/clear-data', requireAdmin, (req, res) => {
     db.clearAllSurveys();
     res.json({ success: true, message: 'Đã làm mới dữ liệu khảo sát trong SQLite thành công!' });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Lỗi khi xóa dữ liệu.' });
+    console.error('Error clearing data:', err);
+    res.status(500).json({ success: false, message: 'Lỗi khi xóa dữ liệu.', error: err.message });
   }
 });
 
-const server = app.listen(PORT, () => {
-  const localIps = getLocalIpAddresses();
-  console.log(`=======================================================`);
-  console.log(`🏥 HỆ THỐNG KHẢO SÁT HÀI LÒNG NHÂN VIÊN Y TẾ (500 NV)`);
-  console.log(`💾 CƠ SỞ DỮ LIỆU: SQLite Enterprise ACID (WAL Mode, Non-blocking)`);
-  console.log(`📁 File lưu trữ: data/surveys.db (Kèm auto-sync backup JSON)`);
-  console.log(`🚀 Cổng dịch vụ: http://localhost:${PORT}`);
-  console.log(`📊 Dashboard Quản trị: http://localhost:${PORT}/admin.html`);
-  if (localIps.length > 0) {
-    console.log(`📱 Mạng nội bộ / Điện thoại: http://${localIps[0]}:${PORT}`);
-    console.log(`📱 QR Code link: http://${localIps[0]}:${PORT}`);
-  }
-  console.log(`=======================================================`);
-});
+if (!isServerless) {
+  const server = app.listen(PORT, () => {
+    const localIps = getLocalIpAddresses();
+    console.log(`=======================================================`);
+    console.log(`🏥 HỆ THỐNG KHẢO SÁT HÀI LÒNG NHÂN VIÊN Y TẾ (500 NV)`);
+    console.log(`💾 CƠ SỞ DỮ LIỆU: SQLite Enterprise ACID (WAL Mode, Non-blocking)`);
+    console.log(`📁 File lưu trữ: data/surveys.db (Kèm auto-sync backup JSON)`);
+    console.log(`🚀 Cổng dịch vụ: http://localhost:${PORT}`);
+    console.log(`📊 Dashboard Quản trị: http://localhost:${PORT}/admin.html`);
+    if (localIps.length > 0) {
+      console.log(`📱 Mạng nội bộ / Điện thoại: http://${localIps[0]}:${PORT}`);
+      console.log(`📱 QR Code link: http://${localIps[0]}:${PORT}`);
+    }
+    console.log(`=======================================================`);
+  });
 
-server.on('error', (err) => {
-  if (err.code === 'EADDRINUSE') {
-    console.error(`⚠️ Cảnh báo xung đột cổng: Cổng ${PORT} đang được tiến trình khác sử dụng.`);
-    console.error(`Gợi ý: Kiểm tra hoặc cấu hình PORT qua biến môi trường (ví dụ: PORT=3001 node server.js).`);
-  } else {
-    console.error('Lỗi khởi động máy chủ:', err);
-  }
-});
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`⚠️ Cảnh báo xung đột cổng: Cổng ${PORT} đang được tiến trình khác sử dụng.`);
+      console.error(`Gợi ý: Kiểm tra hoặc cấu hình PORT qua biến môi trường (ví dụ: PORT=3001 node server.js).`);
+    } else {
+      console.error('Lỗi khởi động máy chủ:', err);
+    }
+  });
+}
+
+module.exports = app;
