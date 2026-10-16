@@ -525,16 +525,16 @@ function computeStatistics(surveys, filterDept = 'all') {
   };
 }
 
-// API: Get comprehensive statistics
-app.get('/api/stats', (req, res) => {
+// API: Get comprehensive statistics (Admin only)
+app.get('/api/stats', requireAdmin, (req, res) => {
   const filterDept = req.query.department || 'all';
   const surveys = readSurveys();
   const stats = computeStatistics(surveys, filterDept);
   res.json(stats);
 });
 
-// API: Get list of responses with pagination & search
-app.get('/api/responses', (req, res) => {
+// API: Get list of responses with pagination & search (Admin only)
+app.get('/api/responses', requireAdmin, (req, res) => {
   const surveys = readSurveys();
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 20;
@@ -564,8 +564,8 @@ app.get('/api/responses', (req, res) => {
   });
 });
 
-// API: Export Excel
-app.get('/api/export-excel', (req, res) => {
+// API: Export Excel (Admin only)
+app.get('/api/export-excel', requireAdmin, (req, res) => {
   try {
     const surveys = readSurveys();
     const stats = computeStatistics(surveys);
@@ -673,8 +673,8 @@ app.get('/api/export-excel', (req, res) => {
   }
 });
 
-// API: Generate realistic 500 mock surveys
-app.post('/api/mock-data', (req, res) => {
+// API: Generate realistic 500 mock surveys (Admin only)
+app.post('/api/mock-data', requireAdmin, (req, res) => {
   try {
     const targetCount = parseInt(req.body.count) || 500;
     const depts = [
@@ -834,8 +834,8 @@ app.post('/api/mock-data', (req, res) => {
   }
 });
 
-// API: Clear data
-app.post('/api/clear-data', (req, res) => {
+// API: Clear data (Admin only)
+app.post('/api/clear-data', requireAdmin, (req, res) => {
   try {
     writeSurveys([]);
     res.json({ success: true, message: 'Đã làm mới dữ liệu khảo sát thành công!' });

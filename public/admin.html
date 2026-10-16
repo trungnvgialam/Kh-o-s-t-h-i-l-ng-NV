@@ -7,6 +7,15 @@
   <meta name="description" content="Dashboard quản trị phân tích số liệu khảo sát sự hài lòng 500 nhân viên y tế theo tiêu chí Bộ Y tế Việt Nam.">
   <link rel="stylesheet" href="css/admin.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📊</text></svg>">
+  <script>
+    // Immediate auth gate check before rendering
+    (function() {
+      var token = sessionStorage.getItem('admin_token') || localStorage.getItem('admin_token');
+      if (!token) {
+        window.location.replace('login.html');
+      }
+    })();
+  </script>
 </head>
 <body>
 
@@ -36,9 +45,17 @@
       <button type="button" class="btn-outline" id="btn-clear-data" style="color: #b91c1c;" title="Xóa dữ liệu để làm đợt khảo sát mới">
         🗑️ Làm Mới
       </button>
-      <a href="index.html" class="btn-outline" target="_blank">
+      <a href="index.html" class="btn-outline" target="_blank" title="Xem giao diện làm bài của nhân viên y tế">
         🔗 Đến Trang Khảo Sát
       </a>
+      <div style="display: flex; align-items: center; gap: 8px; padding-left: 8px; border-left: 1px solid #cbd5e1;">
+        <span style="font-size: 13px; font-weight: 700; color: #0f766e; background: #f0fdfa; padding: 4px 10px; border-radius: 9999px;">
+          👤 Quản Trị
+        </span>
+        <button type="button" class="btn-outline" id="btn-logout" style="color: #b91c1c; border-color: #fca5a5;" title="Đăng xuất khỏi phiên quản trị">
+          🔒 Đăng Xuất
+        </button>
+      </div>
     </div>
   </header>
 

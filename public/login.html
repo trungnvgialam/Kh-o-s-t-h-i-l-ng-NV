@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đăng Nhập Quản Trị Viên - Khảo Sát Sự Hài Lòng Nhân Viên Y Tế</title>
+  <meta name="description" content="Cổng đăng nhập bảo mật dành cho Ban Giám đốc và Phòng Quản lý chất lượng bệnh viện.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔒</text></svg>">
+  <link rel="stylesheet" href="css/main.css">
+  <style>
+    .login-wrapper {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      background: radial-gradient(circle at 10% 20%, rgba(13, 148, 136, 0.08) 0%, transparent 40%),
+                  radial-gradient(circle at 90% 80%, rgba(2, 132, 199, 0.08) 0%, transparent 40%),
+                  var(--bg-gradient);
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 440px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      border-radius: 20px;
+      box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(13, 148, 136, 0.05);
+      padding: 40px 32px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .login-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 6px;
+      background: linear-gradient(90deg, #0d9488 0%, #0284c7 100%);
+    }
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .login-icon-wrap {
+      width: 68px;
+      height: 68px;
+      margin: 0 auto 16px;
+      background: linear-gradient(135deg, #ccfbf1 0%, #e0f2fe 100%);
+      color: #0f766e;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      box-shadow: 0 10px 20px -5px rgba(13, 148, 136, 0.2);
+    }
+
+    .login-header h1 {
+      font-size: 22px;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+
+    .login-header p {
+      font-size: 13.5px;
+      color: #64748b;
+      line-height: 1.5;
+    }
+
+    .login-alert {
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      margin-bottom: 20px;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+      animation: alert-fade 0.3s ease;
+    }
+
+    @keyframes alert-fade {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .login-form .form-group {
+      margin-bottom: 20px;
+    }
+
+    .login-form label {
+      display: block;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 8px;
+    }
+
+    .input-icon-wrap {
+      position: relative;
+    }
+
+    .input-icon-wrap .prefix-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #94a3b8;
+      font-size: 16px;
+      pointer-events: none;
+    }
+
+    .login-input {
+      width: 100%;
+      padding: 12px 14px 12px 42px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 10px;
+      font-size: 14px;
+      font-family: inherit;
+      color: #0f172a;
+      background: #f8fafc;
+      transition: all 0.2s ease;
+    }
+
+    .login-input:focus {
+      outline: none;
+      border-color: #0d9488;
+      background: #ffffff;
+      box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.15);
+    }
+
+    .toggle-pass-btn {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: #64748b;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 4px;
+    }
+
+    .remember-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    .remember-row label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-weight: 500;
+      margin: 0;
+    }
+
+    .btn-login {
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, #0d9488 0%, #0284c7 100%);
+      color: #ffffff;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      box-shadow: 0 10px 20px -5px rgba(13, 148, 136, 0.4);
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-login:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 25px -5px rgba(13, 148, 136, 0.5);
+    }
+
+    .btn-login:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .btn-login:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    .login-footer {
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid #f1f5f9;
+      text-align: center;
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    .login-footer a {
+      color: #0d9488;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .login-footer a:hover {
+      text-decoration: underline;
+    }
+
+    .credential-hint {
+      margin-top: 16px;
+      padding: 10px 14px;
+      background: #f0fdfa;
+      border: 1px dashed #99f6e4;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #0f766e;
+      text-align: center;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-wrapper">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="login-icon-wrap">🛡️</div>
+        <h1>Cổng Quản Trị Khảo Sát</h1>
+        <p>Khu vực bảo mật dành cho Ban Giám đốc & Phòng Quản lý chất lượng Bệnh viện</p>
+      </div>
+
+      <div class="login-alert" id="login-alert">
+        <span>⚠️</span>
+        <span id="login-alert-msg">Tên đăng nhập hoặc mật khẩu không chính xác!</span>
+      </div>
+
+      <form class="login-form" id="login-form">
+        <div class="form-group">
+          <label for="username">Tên đăng nhập Quản trị viên</label>
+          <div class="input-icon-wrap">
+            <span class="prefix-icon">👤</span>
+            <input type="text" id="username" class="login-input" placeholder="Ví dụ: admin" required autocomplete="username" autofocus>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Mật khẩu bảo mật</label>
+          <div class="input-icon-wrap">
+            <span class="prefix-icon">🔑</span>
+            <input type="password" id="password" class="login-input" placeholder="Nhập mật khẩu..." required autocomplete="current-password">
+            <button type="button" class="toggle-pass-btn" id="btn-toggle-pass" title="Hiện/Ẩn mật khẩu">👁️</button>
+          </div>
+        </div>
+
+        <div class="remember-row">
+          <label>
+            <input type="checkbox" id="remember-me" checked>
+            <span>Ghi nhớ phiên đăng nhập (24 giờ)</span>
+          </label>
+        </div>
+
+        <button type="submit" class="btn-login" id="btn-submit">
+          <span>🔒 Đăng Nhập Quản Trị</span>
+        </button>
+      </form>
+
+      <div class="credential-hint">
+        💡 <strong>Tài khoản mặc định hệ thống:</strong><br>
+        Tên đăng nhập: <strong>admin</strong> • Mật khẩu: <strong>admin123</strong>
+      </div>
+
+      <div class="login-footer">
+        <a href="index.html">← Quay lại trang Phiếu Khảo Sát Nhân Viên</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Auto redirect if already logged in
+    (async function checkExistingAuth() {
+      const token = sessionStorage.getItem('admin_token') || localStorage.getItem('admin_token');
+      if (token) {
+        try {
+          const res = await fetch('/api/admin/check-auth', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          if (res.ok) {
+            window.location.replace('admin.html');
+          }
+        } catch (_) {}
+      }
+    })();
+
+    // Toggle password visibility
+    const passInput = document.getElementById('password');
+    const togglePassBtn = document.getElementById('btn-toggle-pass');
+    togglePassBtn?.addEventListener('click', () => {
+      if (passInput.type === 'password') {
+        passInput.type = 'text';
+        togglePassBtn.innerText = '🙈';
+      } else {
+        passInput.type = 'password';
+        togglePassBtn.innerText = '👁️';
+      }
+    });
+
+    // Handle form submit
+    const loginForm = document.getElementById('login-form');
+    const loginAlert = document.getElementById('login-alert');
+    const loginAlertMsg = document.getElementById('login-alert-msg');
+    const btnSubmit = document.getElementById('btn-submit');
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      loginAlert.style.display = 'none';
+
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const remember = document.getElementById('remember-me').checked;
+
+      btnSubmit.disabled = true;
+      btnSubmit.innerHTML = '<span>⏳ Đang xác thực...</span>';
+
+      try {
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success && data.token) {
+          // Store token
+          sessionStorage.setItem('admin_token', data.token);
+          if (remember) {
+            localStorage.setItem('admin_token', data.token);
+          } else {
+            localStorage.removeItem('admin_token');
+          }
+
+          btnSubmit.innerHTML = '<span>✓ Đăng nhập thành công!</span>';
+          setTimeout(() => {
+            window.location.replace('admin.html');
+          }, 400);
+        } else {
+          loginAlertMsg.innerText = data.message || 'Tên đăng nhập hoặc mật khẩu không chính xác!';
+          loginAlert.style.display = 'flex';
+          btnSubmit.disabled = false;
+          btnSubmit.innerHTML = '<span>🔒 Đăng Nhập Quản Trị</span>';
+          passInput.focus();
+        }
+      } catch (err) {
+        console.error(err);
+        loginAlertMsg.innerText = 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại mạng!';
+        loginAlert.style.display = 'flex';
+        btnSubmit.disabled = false;
+        btnSubmit.innerHTML = '<span>🔒 Đăng Nhập Quản Trị</span>';
+      }
+    });
+  </script>
+</body>
+</html>

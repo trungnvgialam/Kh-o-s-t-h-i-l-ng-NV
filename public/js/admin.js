@@ -19,7 +19,44 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function getAdminToken() {
+  return sessionStorage.getItem('admin_token') || localStorage.getItem('admin_token') || '';
+}
+
+function getAuthHeaders() {
+  return {
+    'Authorization': 'Bearer ' + getAdminToken(),
+    'Content-Type': 'application/json'
+  };
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const token = getAdminToken();
+  if (!token) {
+    window.location.replace('login.html');
+    return;
+  }
+
+  try {
+    const authCheck = await fetch('/api/admin/check-auth', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!authCheck.ok) {
+      sessionStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_token');
+      window.location.replace('login.html');
+      return;
+    }
+  } catch (err) {
+    console.warn('Lỗi kiểm tra phiên xác thực:', err);
+  }
+
+  // Bind token to Excel export link
+  const exportBtn = document.getElementById('btn-export-excel');
+  if (exportBtn) {
+    exportBtn.href = `/api/export-excel?token=${encodeURIComponent(token)}`;
+  }
+
   initDashboard();
   setupEventListeners();
 });
@@ -65,7 +102,15 @@ async function loadDashboardStats() {
   const deptFilter = document.getElementById('filter-department')?.value || 'all';
 
   try {
-    const res = await fetch(`/api/stats?department=${deptFilter}`);
+    const res = await fetch(`/api/stats?department=${deptFilter}`, {
+      headers: { 'Authorization': 'Bearer ' + getAdminToken() }
+    });
+    if (res.status === 401) {
+      sessionStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_token');
+      window.location.replace('login.html');
+      return;
+    }
     const stats = await res.json();
 
     updateKpiCards(stats);
@@ -457,7 +502,15 @@ async function loadResponsesTable(page = 1) {
   const dept = document.getElementById('filter-department')?.value || 'all';
 
   try {
-    const res = await fetch(`/api/responses?page=${page}&limit=10&search=${encodeURIComponent(search)}&department=${dept}`);
+    const res = await fetch(`/api/responses?page=${page}&limit=10&search=${encodeURIComponent(search)}&department=${dept}`, {
+      headers: { 'Authorization': 'Bearer ' + getAdminToken() }
+    });
+    if (res.status === 401) {
+      sessionStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_token');
+      window.location.replace('login.html');
+      return;
+    }
     const data = await res.json();
 
     const tbody = document.getElementById('responses-table-body');
@@ -541,9 +594,13 @@ function setupEventListeners() {
       try {
         const res = await fetch('/api/mock-data', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(),
           body: JSON.stringify({ count: 500 })
         });
+        if (res.status === 401) {
+          window.location.replace('login.html');
+          return;
+        }
         const json = await res.json();
         alert(json.message);
         await loadDashboardStats();
@@ -561,7 +618,14 @@ function setupEventListeners() {
   document.getElementById('btn-clear-data')?.addEventListener('click', async () => {
     if (confirm('LƯU Ý: Thao tác này sẽ xóa toàn bộ phiếu khảo sát hiện có trong cơ sở dữ liệu để bắt đầu đợt mới. Bạn có chắc chắn không?')) {
       try {
-        const res = await fetch('/api/clear-data', { method: 'POST' });
+        const res = await fetch('/api/clear-data', { 
+          method: 'POST',
+          headers: getAuthHeaders()
+        });
+        if (res.status === 401) {
+          window.location.replace('login.html');
+          return;
+        }
         const json = await res.json();
         alert(json.message);
         await loadDashboardStats();
@@ -569,6 +633,23 @@ function setupEventListeners() {
       } catch (e) {
         alert('Lỗi khi xóa dữ liệu.');
       }
+    }
+  });
+
+  // Logout button
+  document.getElementById('btn-logout')?.addEventListener('click', async () => {
+    if (confirm('Bạn có chắc chắn muốn đăng xuất khỏi phiên Quản trị viên?')) {
+      const token = getAdminToken();
+      try {
+        await fetch('/api/admin/logout', {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ token })
+        });
+      } catch (_) {}
+      sessionStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_token');
+      window.location.replace('login.html');
     }
   });
 
