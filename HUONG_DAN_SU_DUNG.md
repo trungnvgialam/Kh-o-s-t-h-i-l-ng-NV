@@ -205,9 +205,8 @@ Tại thanh công cụ lọc:
 
 ---
 
-### 5.7 Tạo Dữ liệu Mô phỏng Demo & Làm Mới Dữ liệu Thật
+### 5.7 Làm Mới Dữ Liệu Khảo Sát
 
-- **Nút "⚡ Tạo 500 Dữ Liệu Mẫu":** Tạo tự động bộ 500 phiếu khảo sát giả lập với phân bổ chuẩn xác theo cơ cấu nhân sự y tế (Điều dưỡng ~40%, Bác sĩ ~28%, KTV ~12%...). Giúp Ban Giám đốc chạy thử nghiệm báo cáo trước khi phát động khảo sát thật.
 - **Nút "🗑️ Xóa Trắng Dữ Liệu" (Màu đỏ):** Xóa sạch toàn bộ các phiếu khảo sát trong cơ sở dữ liệu SQLite (`surveys.db`) và tệp sao lưu (`surveys.json`), đưa số phiếu về **0/500**, sẵn sàng bắt đầu đợt khảo sát chính thức mới cho bệnh viện. Trước khi xóa, hệ thống sẽ hiển thị hộp thoại xác nhận để tránh bấm nhầm.
 
 ---
@@ -237,7 +236,7 @@ Hệ thống đã được **nâng cấp lên mức tối đa** với công ngh�
    - **`PRAGMA mmap_size = 268435456`**: Kích hoạt Memory-mapped I/O 256MB RAM để đọc trực tiếp dữ liệu từ bộ nhớ với tốc độ micro-giây.
    - **`PRAGMA cache_size = -64000`**: Cấp phát bộ nhớ đệm 64MB RAM chuyên dụng.
    - **`CREATE INDEX`**: Đánh chỉ mục tự động cho `department` và `submitted_at`, giúp lọc và phân trang 500 - 10.000 phiếu chỉ mất chưa đến 1 phần nghìn giây (1ms).
-   - **Batch Transaction**: Các tác vụ tạo dữ liệu mẫu hoặc nạp dữ liệu hàng loạt được bọc trong một SQLite Transaction duy nhất, ghi 500 phiếu chỉ mất dưới 10ms.
+   - **Batch Transaction**: Các tác vụ nạp dữ liệu hàng loạt được bọc trong một SQLite Transaction duy nhất, ghi hàng trăm phiếu chỉ mất dưới 10ms.
 
 3. **Quy trình Sao lưu & Phục hồi:**
    - **Sao lưu (Backup):** Chỉ cần copy cả thư mục `data/` (chứa `surveys.db` và `surveys.json`) sang ổ cứng ngoài, USB hoặc Google Drive.

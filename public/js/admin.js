@@ -755,40 +755,6 @@ function setupEventListeners() {
     loadResponsesTable(1);
   });
 
-  // Mock data generator
-  document.getElementById('btn-generate-mock')?.addEventListener('click', async () => {
-    if (confirm('Bạn có muốn tạo 500 phiếu khảo sát mô phỏng chân thực theo cơ cấu bệnh viện để kiểm tra toàn diện hệ thống?')) {
-      const btn = document.getElementById('btn-generate-mock');
-      btn.innerText = 'Đang khởi tạo 500 phiếu...';
-      btn.disabled = true;
-
-      try {
-        const res = await fetch('/api/mock-data', {
-          method: 'POST',
-          headers: getAuthHeaders(),
-          body: JSON.stringify({ count: 500 })
-        });
-        if (res.status === 401) {
-          window.location.replace('login.html');
-          return;
-        }
-        const json = await res.json();
-        if (res.ok && json.success) {
-          alert(json.message || 'Đã tạo 500 dữ liệu mẫu thành công!');
-          await loadDashboardStats();
-          await loadResponsesTable(1);
-        } else {
-          alert(json.message || 'Lỗi khi tạo dữ liệu mẫu.');
-        }
-      } catch (e) {
-        alert('Lỗi kết nối khi sinh dữ liệu mẫu: ' + (e.message || e));
-      } finally {
-        btn.innerText = 'Tạo 500 Dữ Liệu Mẫu';
-        btn.disabled = false;
-      }
-    }
-  });
-
   // Clear data button
   document.getElementById('btn-clear-data')?.addEventListener('click', async () => {
     if (confirm('LƯU Ý: Thao tác này sẽ xóa toàn bộ phiếu khảo sát hiện có trong cơ sở dữ liệu để bắt đầu đợt mới. Bạn có chắc chắn không?')) {
