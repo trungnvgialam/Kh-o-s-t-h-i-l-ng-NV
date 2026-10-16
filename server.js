@@ -7,11 +7,11 @@ const crypto = require('crypto');
 const XLSX = require('xlsx');
 
 const SURVEY_CONFIG = require('./questions');
+const db = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const DATA_DIR = path.join(__dirname, 'data');
-const DATA_FILE = path.join(DATA_DIR, 'surveys.json');
 
 // ADMIN CREDENTIALS CONFIGURATION
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
@@ -69,11 +69,6 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-// Ensure database file exists
-if (!fs.existsSync(DATA_FILE)) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify([], null, 2), 'utf8');
-}
-
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -93,96 +88,9 @@ function getLocalIpAddresses() {
   return addresses;
 }
 
-// IN-MEMORY DATA STORE & SAFE CONCURRENCY ENGINE
-let cachedSurveys = [];
-try {
-  if (fs.existsSync(DATA_FILE)) {
-    const raw = fs.readFileSync(DATA_FILE, 'utf8');
-    cachedSurveys = JSON.parse(raw);
-  }
-} catch (err) {
-  console.error('Lỗi khi đọc file dữ liệu khảo sát ban đầu:', err);
-  cachedSurveys = [];
-}
-
-// Compute atomic monotonic ID counter to prevent duplicate IDs forever
-let maxIdCounter = 0;
-cachedSurveys.forEach(s => {
-  const match = String(s.id).match(/^NV-(\d+)$/);
-  if (match) {
-    const num = parseInt(match[1], 10);
-    if (num > maxIdCounter) maxIdCounter = num;
-  }
-});
-
-// Serialized async queue to guarantee non-blocking, conflict-free disk persistence
-let writePromise = Promise.resolve();
-
-function scheduleDiskWrite() {
-  writePromise = writePromise.then(async () => {
-    await persistSurveysToDisk();
-  }).catch(err => {
-    console.error('Lỗi hàng đợi ghi đĩa:', err);
-  });
-  return writePromise;
-}
-
-async function persistSurveysToDisk() {
-  const jsonStr = JSON.stringify(cachedSurveys, null, 2);
-  const tempFile = path.join(DATA_DIR, `surveys_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.tmp`);
-  const backupFile = path.join(DATA_DIR, 'surveys.backup.json');
-
-  try {
-    // 1. Write unique temporary file
-    await fs.promises.writeFile(tempFile, jsonStr, 'utf8');
-
-    // 2. Backup existing file if non-empty
-    if (fs.existsSync(DATA_FILE) && fs.statSync(DATA_FILE).size > 10) {
-      try {
-        await fs.promises.copyFile(DATA_FILE, backupFile);
-      } catch (_) {}
-    }
-
-    // 3. Atomically replace with retry for Windows EBUSY / locking
-    let renamed = false;
-    for (let i = 0; i < 5; i++) {
-      try {
-        await fs.promises.rename(tempFile, DATA_FILE);
-        renamed = true;
-        break;
-      } catch (err) {
-        await new Promise(res => setTimeout(res, 50));
-      }
-    }
-
-    // Fallback direct write if Windows rename is held
-    if (!renamed) {
-      await fs.promises.writeFile(DATA_FILE, jsonStr, 'utf8');
-      try { await fs.promises.unlink(tempFile); } catch (_) {}
-    }
-  } catch (err) {
-    console.error('Lỗi khi ghi đĩa dữ liệu khảo sát:', err);
-    try { if (fs.existsSync(tempFile)) await fs.promises.unlink(tempFile); } catch (_) {}
-  }
-}
-
-// Read all surveys safely from memory (O(1), zero disk lock)
+// Helper hàm đọc toàn bộ khảo sát từ cơ sở dữ liệu SQLite
 function readSurveys() {
-  return cachedSurveys;
-}
-
-// Write/update surveys in memory & schedule disk write
-function writeSurveys(data) {
-  cachedSurveys = data;
-  maxIdCounter = 0;
-  cachedSurveys.forEach(s => {
-    const match = String(s.id).match(/^NV-(\d+)$/);
-    if (match) {
-      const num = parseInt(match[1], 10);
-      if (num > maxIdCounter) maxIdCounter = num;
-    }
-  });
-  scheduleDiskWrite();
+  return db.getAllSurveys();
 }
 
 // API: Get survey config & system status
@@ -192,11 +100,12 @@ app.get('/api/config', (req, res) => {
   
   res.json({
     config: SURVEY_CONFIG,
-    totalCount: cachedSurveys.length,
+    totalCount: db.getSurveyCount(),
     target: SURVEY_CONFIG.targetRespondents,
     localIps,
     networkUrl: `http://${primaryIp}:${PORT}`,
-    localUrl: `http://localhost:${PORT}`
+    localUrl: `http://localhost:${PORT}`,
+    engine: 'SQLite WAL Mode (Enterprise ACID)'
   });
 });
 
