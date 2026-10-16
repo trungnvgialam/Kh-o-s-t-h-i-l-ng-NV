@@ -105,6 +105,7 @@ app.get('/api/config', (req, res) => {
     localIps,
     networkUrl: `http://${primaryIp}:${PORT}`,
     localUrl: `http://localhost:${PORT}`,
+    tunnelUrl: 'https://violation-flush-wma-bikini.trycloudflare.com',
     engine: 'SQLite WAL Mode (Enterprise ACID)'
   });
 });

@@ -334,11 +334,21 @@
           📱 Dùng camera điện thoại hoặc Zalo quét mã QR để làm bài
         </p>
 
+        <!-- Mode Switcher: Cloudflare Tunnel (4G/5G/Wi-Fi) vs LAN IP -->
+        <div class="qr-mode-selector" style="display: flex; gap: 8px; justify-content: center; margin-bottom: 12px;">
+          <button type="button" class="btn-action-primary" id="btn-mode-tunnel" style="font-size: 11.5px; padding: 6px 12px; border-radius: 20px; font-weight: 600; cursor: pointer;">
+            ⚡ Quét Mọi Mạng (4G / 5G / Wi-Fi)
+          </button>
+          <button type="button" class="btn-outline" id="btn-mode-local" style="font-size: 11.5px; padding: 6px 12px; border-radius: 20px; font-weight: 600; cursor: pointer;">
+            🏢 Quét Mạng Nội Bộ (LAN Wi-Fi)
+          </button>
+        </div>
+
         <!-- Dynamic IP & Copy URL box -->
         <div style="margin: 10px 0 14px; text-align: left;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-            <label style="font-size: 12px; font-weight: 600; color: #475569;">
-              Đường dẫn khảo sát qua Wi-Fi:
+            <label style="font-size: 12px; font-weight: 600; color: #475569;" id="qr-url-label">
+              Đường dẫn khảo sát trực tuyến:
             </label>
             <span id="copy-toast" style="font-size: 11px; font-weight: 600; color: #059669; display: none;">✓ Đã sao chép!</span>
           </div>
@@ -350,10 +360,8 @@
           </div>
         </div>
 
-        <div id="qr-connection-note" style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #0f766e; padding: 10px 12px; border-radius: 6px; font-size: 12px; color: #334155; line-height: 1.5; text-align: left; margin-bottom: 14px;">
-          <strong>💡 Điều kiện kết nối thành công:</strong><br>
-          1. Điện thoại cần kết nối <b>cùng mạng Wi-Fi</b> với máy tính này (tắt 4G/5G).<br>
-          2. Nếu điện thoại báo không kết nối được: Chạy tệp <code>Mo_Cong_Tuong_Lua_3000.bat</code> (chuột phải chọn Run as administrator) để mở tường lửa Windows.
+        <div id="qr-connection-note" style="background: #ecfdf5; border: 1px solid #a7f3d0; border-left: 4px solid #059669; padding: 10px 12px; border-radius: 6px; font-size: 12px; color: #065f46; line-height: 1.5; text-align: left; margin-bottom: 14px;">
+          <strong>✅ KẾT NỐI TOÀN DIỆN ĐÃ BẬT:</strong> Mã QR này quét được ngay lập tức trên 100% điện thoại (kể cả bật 4G, 5G hay bất kỳ mạng Wi-Fi nào), không bị tường lửa chặn!
         </div>
       </div>
 
@@ -370,7 +378,7 @@
 
   <script src="vendor/chart.umd.min.js"></script>
   <script src="vendor/qrcode.min.js"></script>
-  <script src="js/questions.js"></script>
-  <script src="js/admin.js"></script>
+  <script src="js/questions.js?v=3.0"></script>
+  <script src="js/admin.js?v=3.0"></script>
 </body>
 </html>

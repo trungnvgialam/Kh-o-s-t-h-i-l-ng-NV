@@ -67,22 +67,61 @@ async function initDashboard() {
   await loadResponsesTable(1);
 }
 
+let currentQrMode = 'tunnel'; // 'tunnel' (Cloudflare toàn diện) hoặc 'local' (Mạng nội bộ LAN)
+
 // 1. Load System Config & QR Code
 async function loadSystemConfig() {
   try {
     const res = await fetch('/api/config');
     systemConfig = await res.json();
 
-    const qrUrl = systemConfig.networkUrl || systemConfig.localUrl || window.location.origin;
-    const qrInput = document.getElementById('qr-survey-url-input');
-    if (qrInput) {
-      qrInput.value = qrUrl;
-    }
-
-    renderQrCode(qrUrl);
+    updateQrDisplay();
   } catch (err) {
     console.error('Error loading config:', err);
   }
+}
+
+// Hàm cập nhật chế độ hiển thị mã QR
+function updateQrDisplay() {
+  if (!systemConfig) return;
+  const isTunnel = currentQrMode === 'tunnel' && Boolean(systemConfig.tunnelUrl);
+  const activeUrl = isTunnel 
+    ? systemConfig.tunnelUrl 
+    : (systemConfig.networkUrl || systemConfig.localUrl || window.location.origin);
+
+  const qrInput = document.getElementById('qr-survey-url-input');
+  if (qrInput) qrInput.value = activeUrl;
+
+  const btnTunnel = document.getElementById('btn-mode-tunnel');
+  const btnLocal = document.getElementById('btn-mode-local');
+  const noteBox = document.getElementById('qr-connection-note');
+  const label = document.getElementById('qr-url-label');
+
+  if (isTunnel) {
+    if (btnTunnel) { btnTunnel.className = 'btn-action-primary'; }
+    if (btnLocal) { btnLocal.className = 'btn-outline'; }
+    if (label) label.innerText = 'Đường dẫn khảo sát trực tuyến (Toàn diện 4G/5G/Wi-Fi):';
+    if (noteBox) {
+      noteBox.style.background = '#ecfdf5';
+      noteBox.style.borderColor = '#a7f3d0';
+      noteBox.style.borderLeftColor = '#059669';
+      noteBox.style.color = '#065f46';
+      noteBox.innerHTML = '<strong>✅ KẾT NỐI TOÀN DIỆN ĐÃ BẬT:</strong> Mã QR này quét được ngay lập tức trên 100% điện thoại (kể cả bật 4G, 5G hay bất kỳ mạng Wi-Fi nào), không bị tường lửa chặn!';
+    }
+  } else {
+    if (btnTunnel) { btnTunnel.className = 'btn-outline'; }
+    if (btnLocal) { btnLocal.className = 'btn-action-primary'; }
+    if (label) label.innerText = 'Đường dẫn khảo sát mạng nội bộ (LAN Wi-Fi):';
+    if (noteBox) {
+      noteBox.style.background = '#f8fafc';
+      noteBox.style.borderColor = '#e2e8f0';
+      noteBox.style.borderLeftColor = '#0f766e';
+      noteBox.style.color = '#334155';
+      noteBox.innerHTML = '<strong>💡 Điều kiện kết nối LAN:</strong><br>1. Điện thoại cần kết nối <b>cùng mạng Wi-Fi</b> với máy tính này (tắt 4G/5G).<br>2. Nếu điện thoại báo không kết nối được: Chạy tệp <code>Mo_Cong_Tuong_Lua_3000.bat</code> (chuột phải chọn Run as administrator) để mở tường lửa Windows.';
+    }
+  }
+
+  renderQrCode(activeUrl);
 }
 
 // Hàm kết xuất mã QR chuẩn độ tương phản cao cho camera điện thoại & Zalo
@@ -669,6 +708,17 @@ function setupEventListeners() {
 
   qrModal?.addEventListener('click', (e) => {
     if (e.target === qrModal) qrModal.classList.remove('active');
+  });
+
+  // Toggle QR Mode (Cloudflare Tunnel vs LAN IP)
+  document.getElementById('btn-mode-tunnel')?.addEventListener('click', () => {
+    currentQrMode = 'tunnel';
+    updateQrDisplay();
+  });
+
+  document.getElementById('btn-mode-local')?.addEventListener('click', () => {
+    currentQrMode = 'local';
+    updateQrDisplay();
   });
 
   // Copy QR URL button
