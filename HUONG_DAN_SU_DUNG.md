@@ -208,7 +208,7 @@ Tại thanh công cụ lọc:
 ### 5.7 Tạo Dữ liệu Mô phỏng Demo & Làm Mới Dữ liệu Thật
 
 - **Nút "⚡ Tạo 500 Dữ Liệu Mẫu":** Tạo tự động bộ 500 phiếu khảo sát giả lập với phân bổ chuẩn xác theo cơ cấu nhân sự y tế (Điều dưỡng ~40%, Bác sĩ ~28%, KTV ~12%...). Giúp Ban Giám đốc chạy thử nghiệm báo cáo trước khi phát động khảo sát thật.
-- **Nút "🗑️ Làm Mới":** Xóa sạch toàn bộ dữ liệu khảo sát trong cơ sở dữ liệu để bắt đầu đợt thu thập phiếu chính thức cho bệnh viện.
+- **Nút "🗑️ Xóa Trắng Dữ Liệu" (Màu đỏ):** Xóa sạch toàn bộ các phiếu khảo sát trong cơ sở dữ liệu SQLite (`surveys.db`) và tệp sao lưu (`surveys.json`), đưa số phiếu về **0/500**, sẵn sàng bắt đầu đợt khảo sát chính thức mới cho bệnh viện. Trước khi xóa, hệ thống sẽ hiển thị hộp thoại xác nhận để tránh bấm nhầm.
 
 ---
 
