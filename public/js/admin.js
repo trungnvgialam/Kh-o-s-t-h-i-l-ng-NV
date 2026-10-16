@@ -653,11 +653,15 @@ function setupEventListeners() {
           return;
         }
         const json = await res.json();
-        alert(json.message);
-        await loadDashboardStats();
-        await loadResponsesTable(1);
+        if (res.ok && json.success) {
+          alert(json.message || 'Đã tạo 500 dữ liệu mẫu thành công!');
+          await loadDashboardStats();
+          await loadResponsesTable(1);
+        } else {
+          alert(json.message || 'Lỗi khi tạo dữ liệu mẫu.');
+        }
       } catch (e) {
-        alert('Lỗi khi sinh dữ liệu mẫu.');
+        alert('Lỗi kết nối khi sinh dữ liệu mẫu: ' + (e.message || e));
       } finally {
         btn.innerText = 'Tạo 500 Dữ Liệu Mẫu';
         btn.disabled = false;
@@ -668,6 +672,8 @@ function setupEventListeners() {
   // Clear data button
   document.getElementById('btn-clear-data')?.addEventListener('click', async () => {
     if (confirm('LƯU Ý: Thao tác này sẽ xóa toàn bộ phiếu khảo sát hiện có trong cơ sở dữ liệu để bắt đầu đợt mới. Bạn có chắc chắn không?')) {
+      const btn = document.getElementById('btn-clear-data');
+      if (btn) btn.disabled = true;
       try {
         const res = await fetch('/api/clear-data', { 
           method: 'POST',
@@ -678,11 +684,17 @@ function setupEventListeners() {
           return;
         }
         const json = await res.json();
-        alert(json.message);
-        await loadDashboardStats();
-        await loadResponsesTable(1);
+        if (res.ok && json.success) {
+          alert(json.message || 'Đã làm mới dữ liệu thành công!');
+          await loadDashboardStats();
+          await loadResponsesTable(1);
+        } else {
+          alert(json.message || 'Lỗi khi xóa dữ liệu.');
+        }
       } catch (e) {
-        alert('Lỗi khi xóa dữ liệu.');
+        alert('Lỗi kết nối khi xóa dữ liệu: ' + (e.message || e));
+      } finally {
+        if (btn) btn.disabled = false;
       }
     }
   });
