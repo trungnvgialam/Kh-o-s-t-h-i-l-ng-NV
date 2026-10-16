@@ -3,6 +3,7 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const crypto = require('crypto');
 const XLSX = require('xlsx');
 
 const SURVEY_CONFIG = require('./questions');
@@ -11,6 +12,57 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const DATA_DIR = path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'surveys.json');
+
+// ADMIN CREDENTIALS CONFIGURATION
+const ADMIN_USER = process.env.ADMIN_USER || 'admin';
+const ADMIN_PASS = process.env.ADMIN_PASS || 'admin123';
+
+// In-memory active admin sessions store: token -> { user, createdAt, expiresAt }
+const adminSessions = new Map();
+
+// Helper to create admin session token (valid 24h)
+function createAdminSession(user) {
+  const token = crypto.randomBytes(32).toString('hex');
+  const now = Date.now();
+  adminSessions.set(token, {
+    user,
+    createdAt: now,
+    expiresAt: now + 24 * 60 * 60 * 1000
+  });
+  return token;
+}
+
+// Authentication middleware for Admin routes
+function requireAdmin(req, res, next) {
+  let token = null;
+  const authHeader = req.headers['authorization'];
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7);
+  } else if (req.headers['x-admin-token']) {
+    token = req.headers['x-admin-token'];
+  } else if (req.query && req.query.token) {
+    token = req.query.token;
+  }
+
+  if (!token) {
+    return res.status(401).json({
+      success: false,
+      message: 'Yêu cầu đăng nhập tài khoản Quản trị viên (Admin) để xem kết quả.'
+    });
+  }
+
+  const session = adminSessions.get(token);
+  if (!session || Date.now() > session.expiresAt) {
+    if (session) adminSessions.delete(token);
+    return res.status(401).json({
+      success: false,
+      message: 'Phiên làm việc Quản trị viên đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.'
+    });
+  }
+
+  req.adminUser = session.user;
+  next();
+}
 
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
