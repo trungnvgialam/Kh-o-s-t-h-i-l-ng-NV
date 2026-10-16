@@ -217,7 +217,7 @@ const insertStmt = db.prepare(`
   )
 `);
 
-// 2. Tự động chuyển đổi dữ liệu từ surveys.json hoặc surveys.backup.json nếu Database SQLite mới khởi tạo
+// 2. Tự động chuyển đổi dữ liệu từ surveys.json nếu Database SQLite mới khởi tạo (chỉ khi có sẵn dữ liệu)
 const currentCount = db.prepare('SELECT COUNT(*) as count FROM surveys').get().count;
 if (currentCount === 0 && (!isServerless || !fs.existsSync(CLEARED_MARKER))) {
   let surveysToLoad = null;
@@ -232,31 +232,6 @@ if (currentCount === 0 && (!isServerless || !fs.existsSync(CLEARED_MARKER))) {
     } catch (_) {}
   }
 
-  // Fallback sang file backup nếu surveys.json trống
-  if ((!surveysToLoad || surveysToLoad.length === 0) && fs.existsSync(BACKUP_JSON_FILE)) {
-    try {
-      const rawBackup = fs.readFileSync(BACKUP_JSON_FILE, 'utf8');
-      const backupExisting = JSON.parse(rawBackup);
-      if (Array.isArray(backupExisting) && backupExisting.length > 0) {
-        surveysToLoad = backupExisting;
-      }
-    } catch (_) {}
-  }
-
-  // Fallback sang bundled backup trên serverless nếu cần
-  if ((!surveysToLoad || surveysToLoad.length === 0) && isServerless) {
-    const bundledBackup = path.join(BUNDLED_DIR, 'surveys.backup.json');
-    if (fs.existsSync(bundledBackup)) {
-      try {
-        const raw = fs.readFileSync(bundledBackup, 'utf8');
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          surveysToLoad = parsed;
-        }
-      } catch (_) {}
-    }
-  }
-
   if (surveysToLoad && surveysToLoad.length > 0) {
     console.log(`[SQLite Migration] Đang tự động nạp ${surveysToLoad.length} bản ghi hiện có vào surveys.db...`);
     const insertManyTx = db.transaction((surveys) => {
@@ -266,9 +241,6 @@ if (currentCount === 0 && (!isServerless || !fs.existsSync(CLEARED_MARKER))) {
     });
     insertManyTx(surveysToLoad);
     console.log(`[SQLite Migration] Hoàn tất nạp ${surveysToLoad.length} bản ghi sang cơ sở dữ liệu SQLite!`);
-    try {
-      fs.writeFileSync(JSON_FILE, JSON.stringify(surveysToLoad, null, 2), 'utf8');
-    } catch (_) {}
   }
 }
 
@@ -428,6 +400,13 @@ function clearAllSurveys() {
   try {
     fs.writeFileSync(JSON_FILE, '[]', 'utf8');
   } catch (_) {}
+  try {
+    fs.writeFileSync(BACKUP_JSON_FILE, '[]', 'utf8');
+  } catch (_) {}
+  if (!isServerless) {
+    try { db.pragma('wal_checkpoint(TRUNCATE)'); } catch (_) {}
+  }
+  try { db.prepare('VACUUM').run(); } catch (_) {}
   if (isServerless) {
     try {
       fs.writeFileSync(CLEARED_MARKER, '1', 'utf8');
