@@ -1,0 +1,583 @@
+/**
+ * ADMIN DASHBOARD ANALYTICS & INTERACTION CONTROLLER (ADMIN.JS)
+ */
+
+let radarChartInstance = null;
+let barCriteriaChartInstance = null;
+let roleDoughnutInstance = null;
+let commitmentDoughnutInstance = null;
+let qrCodeInstance = null;
+let systemConfig = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+  initDashboard();
+  setupEventListeners();
+});
+
+async function initDashboard() {
+  await loadSystemConfig();
+  await loadDashboardStats();
+  await loadResponsesTable(1);
+}
+
+// 1. Load System Config & QR Code
+async function loadSystemConfig() {
+  try {
+    const res = await fetch('/api/config');
+    systemConfig = await res.json();
+
+    const qrUrl = systemConfig.networkUrl || systemConfig.localUrl;
+    const qrUrlDisplay = document.getElementById('qr-survey-url');
+    if (qrUrlDisplay) {
+      qrUrlDisplay.innerText = qrUrl;
+    }
+
+    // Generate QR Code
+    const qrContainer = document.getElementById('qrcode-container');
+    if (qrContainer && window.QRCode) {
+      qrContainer.innerHTML = '';
+      qrCodeInstance = new QRCode(qrContainer, {
+        text: qrUrl,
+        width: 200,
+        height: 200,
+        colorDark: '#0f766e',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.H
+      });
+    }
+  } catch (err) {
+    console.error('Error loading config:', err);
+  }
+}
+
+// 2. Load Analytics & Statistics
+async function loadDashboardStats() {
+  const deptFilter = document.getElementById('filter-department')?.value || 'all';
+
+  try {
+    const res = await fetch(`/api/stats?department=${deptFilter}`);
+    const stats = await res.json();
+
+    updateKpiCards(stats);
+    updateRadarChart(stats.groupScores);
+    updateCriteriaBarChart(stats.questionScores);
+    updateRoleDoughnut(stats.byRole);
+    updateCommitmentDoughnut(stats.commitment);
+    updatePriorityMatrix(stats.topStrengths, stats.topConcerns);
+    updateDepartmentTable(stats.byDepartment);
+    updateFeedbackWall(stats.suggestions);
+  } catch (err) {
+    console.error('Error loading stats:', err);
+  }
+}
+
+// 3. Update KPI Cards & Progress
+function updateKpiCards(stats) {
+  // Target Progress Bar
+  const targetTotal = stats.target || 500;
+  const currentCount = stats.totalCount || 0;
+  const pct = Math.min(100, stats.completionRate || 0);
+
+  const fill = document.getElementById('target-fill');
+  const countLabel = document.getElementById('target-count-label');
+  const pctLabel = document.getElementById('target-pct-label');
+
+  if (fill) fill.style.width = `${pct}%`;
+  if (countLabel) countLabel.innerText = `${currentCount} / ${targetTotal} Phiếu`;
+  if (pctLabel) pctLabel.innerText = `${pct}% Mục tiêu`;
+
+  // KPI 1: Total
+  const kpiTotal = document.getElementById('kpi-total-responses');
+  if (kpiTotal) kpiTotal.innerText = currentCount;
+
+  // KPI 2: CSI %
+  const kpiCsi = document.getElementById('kpi-csi-score');
+  const badgeCsi = document.getElementById('badge-csi');
+  if (kpiCsi) kpiCsi.innerText = stats.csi || 0;
+  if (badgeCsi) {
+    if (stats.csi >= 85) {
+      badgeCsi.className = 'kpi-badge badge-excellent';
+      badgeCsi.innerText = 'Xuất sắc';
+    } else if (stats.csi >= 75) {
+      badgeCsi.className = 'kpi-badge badge-good';
+      badgeCsi.innerText = 'Khá';
+    } else if (stats.csi >= 60) {
+      badgeCsi.className = 'kpi-badge badge-warning';
+      badgeCsi.innerText = 'Trung bình';
+    } else {
+      badgeCsi.className = 'kpi-badge badge-danger';
+      badgeCsi.innerText = 'Cần cải thiện';
+    }
+  }
+
+  // KPI 3: Overall 1-10 mean
+  const kpiOverall = document.getElementById('kpi-overall-score');
+  if (kpiOverall) kpiOverall.innerText = stats.overallMean || 0;
+
+  // KPI 4: eNPS
+  const kpiEnps = document.getElementById('kpi-enps-score');
+  const badgeEnps = document.getElementById('badge-enps');
+  if (kpiEnps) {
+    kpiEnps.innerText = (stats.enps?.score > 0 ? '+' : '') + (stats.enps?.score || 0);
+  }
+  if (badgeEnps) {
+    const score = stats.enps?.score || 0;
+    if (score >= 50) {
+      badgeEnps.className = 'kpi-badge badge-excellent';
+      badgeEnps.innerText = 'Rất cao';
+    } else if (score >= 20) {
+      badgeEnps.className = 'kpi-badge badge-good';
+      badgeEnps.innerText = 'Tốt';
+    } else if (score >= 0) {
+      badgeEnps.className = 'kpi-badge badge-warning';
+      badgeEnps.innerText = 'Ổn định';
+    } else {
+      badgeEnps.className = 'kpi-badge badge-danger';
+      badgeEnps.innerText = 'Cần chú ý';
+    }
+  }
+}
+
+// 4. Radar Chart: 5 Bộ Y tế dimensions
+function updateRadarChart(groupScores) {
+  const ctx = document.getElementById('radarGroupChart')?.getContext('2d');
+  if (!ctx || !window.Chart) return;
+
+  const labels = (groupScores || []).map(g => `Nhóm ${g.code}: ${g.name}`);
+  const dataValues = (groupScores || []).map(g => g.meanScore);
+
+  if (radarChartInstance) {
+    radarChartInstance.destroy();
+  }
+
+  radarChartInstance = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: labels.length ? labels : ['Nhóm A', 'Nhóm B', 'Nhóm C', 'Nhóm D', 'Nhóm E'],
+      datasets: [{
+        label: 'Điểm trung bình (Thang 1-5)',
+        data: dataValues.length ? dataValues : [0, 0, 0, 0, 0],
+        backgroundColor: 'rgba(13, 148, 136, 0.22)',
+        borderColor: '#0d9488',
+        borderWidth: 2.5,
+        pointBackgroundColor: '#0f766e',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+        pointRadius: 4.5,
+        pointHoverRadius: 7
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        r: {
+          min: 0,
+          max: 5,
+          ticks: { stepSize: 1, backdropColor: 'transparent', font: { size: 10 } },
+          grid: { color: 'rgba(0,0,0,0.06)' },
+          angleLines: { color: 'rgba(0,0,0,0.08)' },
+          pointLabels: {
+            font: { size: 11.5, weight: '600', family: "'Plus Jakarta Sans', sans-serif" },
+            color: '#334155'
+          }
+        }
+      },
+      plugins: {
+        legend: { display: false }
+      }
+    }
+  });
+}
+
+// 5. Horizontal Bar Chart: 23 individual criteria
+function updateCriteriaBarChart(questionScores) {
+  const ctx = document.getElementById('barCriteriaChart')?.getContext('2d');
+  if (!ctx || !window.Chart) return;
+
+  const sorted = [...(questionScores || [])].sort((a, b) => b.meanScore - a.meanScore);
+  const labels = sorted.map(q => `${q.id.toUpperCase()}: ${q.text.length > 40 ? q.text.slice(0, 38) + '...' : q.text}`);
+  const dataValues = sorted.map(q => q.meanScore);
+  const backgroundColors = dataValues.map(v => {
+    if (v >= 4.0) return '#10b981'; // Green
+    if (v >= 3.6) return '#0284c7'; // Blue
+    if (v >= 3.3) return '#f59e0b'; // Amber
+    return '#ef4444'; // Red
+  });
+
+  if (barCriteriaChartInstance) {
+    barCriteriaChartInstance.destroy();
+  }
+
+  barCriteriaChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Điểm hài lòng trung bình',
+        data: dataValues,
+        backgroundColor: backgroundColors,
+        borderRadius: 4
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          min: 1,
+          max: 5,
+          grid: { color: 'rgba(0,0,0,0.05)' },
+          ticks: { font: { size: 11 } }
+        },
+        y: {
+          grid: { display: false },
+          ticks: { font: { size: 11, family: "'Plus Jakarta Sans', sans-serif" }, color: '#1e293b' }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => `Điểm TB: ${ctx.raw} / 5.0 (CSI: ${(ctx.raw / 5 * 100).toFixed(1)}%)`
+          }
+        }
+      }
+    }
+  });
+}
+
+// 6. Role Breakdown Doughnut
+function updateRoleDoughnut(byRole) {
+  const ctx = document.getElementById('roleDoughnutChart')?.getContext('2d');
+  if (!ctx || !window.Chart) return;
+
+  const roleNameMap = {
+    bacsi: 'Bác sĩ',
+    dieuduong: 'Điều dưỡng / HS',
+    kythuatvien: 'Kỹ thuật viên',
+    duocsi: 'Dược sĩ',
+    quanly_hanhchinh: 'Hành chính / QL',
+    hotro: 'Hộ lý / Hỗ trợ'
+  };
+
+  const labels = Object.keys(byRole || {}).map(k => roleNameMap[k] || k);
+  const data = Object.values(byRole || {}).map(v => v.count);
+
+  if (roleDoughnutInstance) {
+    roleDoughnutInstance.destroy();
+  }
+
+  roleDoughnutInstance = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: labels.length ? labels : ['Chưa có dữ liệu'],
+      datasets: [{
+        data: data.length ? data : [1],
+        backgroundColor: ['#0d9488', '#0284c7', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'],
+        borderWidth: 2,
+        borderColor: '#ffffff'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } }
+      },
+      cutout: '65%'
+    }
+  });
+}
+
+// 7. Commitment Doughnut
+function updateCommitmentDoughnut(commitmentStats) {
+  const ctx = document.getElementById('commitmentDoughnutChart')?.getContext('2d');
+  if (!ctx || !window.Chart) return;
+
+  const commitMap = {
+    chac_chan: 'Chắc chắn gắn bó lâu dài',
+    co_the: 'Có thể gắn bó',
+    phan_van: 'Đang phân vân',
+    du_dinh_chuyen: 'Dự định chuyển nơi khác'
+  };
+
+  const labels = Object.keys(commitmentStats || {}).map(k => commitMap[k] || k);
+  const data = Object.values(commitmentStats || {});
+
+  if (commitmentDoughnutInstance) {
+    commitmentDoughnutInstance.destroy();
+  }
+
+  commitmentDoughnutInstance = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: labels.length ? labels : ['Chưa có dữ liệu'],
+      datasets: [{
+        data: data.length ? data : [1],
+        backgroundColor: ['#10b981', '#06b6d4', '#f59e0b', '#ef4444'],
+        borderWidth: 2,
+        borderColor: '#ffffff'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }
+      },
+      cutout: '65%'
+    }
+  });
+}
+
+// 8. Priority Action Matrix (Top 5 Strengths & Concerns)
+function updatePriorityMatrix(topStrengths, topConcerns) {
+  const strengthsContainer = document.getElementById('matrix-strengths-list');
+  const concernsContainer = document.getElementById('matrix-concerns-list');
+
+  if (strengthsContainer) {
+    if (!topStrengths || topStrengths.length === 0) {
+      strengthsContainer.innerHTML = '<p style="color:#94a3b8; font-size:13px;">Chưa có dữ liệu khảo sát.</p>';
+    } else {
+      strengthsContainer.innerHTML = topStrengths.map((q, idx) => `
+        <div class="matrix-item">
+          <div class="matrix-item-left">
+            <span class="matrix-rank">${idx + 1}</span>
+            <div>
+              <div class="text">${q.text}</div>
+              <div class="sub">Mã: ${q.id.toUpperCase()} • Nhóm ${q.groupCode}: ${q.groupName}</div>
+            </div>
+          </div>
+          <span class="matrix-score-pill pill-green">${q.meanScore} / 5</span>
+        </div>
+      `).join('');
+    }
+  }
+
+  if (concernsContainer) {
+    if (!topConcerns || topConcerns.length === 0) {
+      concernsContainer.innerHTML = '<p style="color:#94a3b8; font-size:13px;">Chưa có dữ liệu khảo sát.</p>';
+    } else {
+      concernsContainer.innerHTML = topConcerns.map((q, idx) => `
+        <div class="matrix-item">
+          <div class="matrix-item-left">
+            <span class="matrix-rank" style="background:#fee2e2; color:#b91c1c;">${idx + 1}</span>
+            <div>
+              <div class="text">${q.text}</div>
+              <div class="sub">Mã: ${q.id.toUpperCase()} • Nhóm ${q.groupCode}: ${q.groupName}</div>
+            </div>
+          </div>
+          <span class="matrix-score-pill pill-red">${q.meanScore} / 5</span>
+        </div>
+      `).join('');
+    }
+  }
+}
+
+// 9. Department Benchmark Table
+function updateDepartmentTable(byDepartment) {
+  const tbody = document.getElementById('dept-table-body');
+  if (!tbody) return;
+
+  const deptNames = {
+    noi: 'Khối Lâm sàng Nội',
+    ngoai: 'Khối Lâm sàng Ngoại',
+    capcuu: 'Khối Khám bệnh & Cấp cứu',
+    canlamsang: 'Khối Cận lâm sàng',
+    hanhchinh: 'Khối Phòng ban chức năng'
+  };
+
+  const rows = Object.entries(byDepartment || {}).map(([key, item]) => {
+    const name = deptNames[key] || key;
+    const badgeClass = item.csi >= 80 ? 'badge-excellent' : item.csi >= 70 ? 'badge-good' : 'badge-warning';
+    return `
+      <tr>
+        <td><strong>${name}</strong></td>
+        <td>${item.count} phiếu</td>
+        <td><span style="font-weight:700; color:#0f766e;">${item.avgScore}</span> / 5.0</td>
+        <td><span class="kpi-badge ${badgeClass}">${item.csi}%</span></td>
+      </tr>
+    `;
+  });
+
+  tbody.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="4" style="text-align:center; color:#94a3b8;">Chưa có dữ liệu phân loại.</td></tr>';
+}
+
+// 10. Staff Suggestions Feedback Wall
+function updateFeedbackWall(suggestions) {
+  const container = document.getElementById('feedback-wall');
+  if (!container) return;
+
+  const roleNames = {
+    bacsi: 'Bác sĩ',
+    dieuduong: 'Điều dưỡng',
+    kythuatvien: 'Kỹ thuật viên',
+    duocsi: 'Dược sĩ',
+    quanly_hanhchinh: 'Hành chính'
+  };
+  const deptNames = {
+    noi: 'Khoa Nội',
+    ngoai: 'Khoa Ngoại',
+    capcuu: 'Cấp cứu',
+    canlamsang: 'Cận lâm sàng',
+    hanhchinh: 'Hành chính'
+  };
+
+  if (!suggestions || suggestions.length === 0) {
+    container.innerHTML = '<p style="color:#94a3b8; font-size:13.5px; padding:16px;">Chưa có ý kiến góp ý nào được gửi.</p>';
+    return;
+  }
+
+  container.innerHTML = suggestions.slice(0, 6).map(s => `
+    <div class="feedback-card">
+      <div class="feedback-quote">"${s.text}"</div>
+      <div class="feedback-meta">
+        <span>${roleNames[s.role] || 'Nhân viên'} • ${deptNames[s.department] || ''}</span>
+        <span style="font-weight:700; color:#0d9488;">Đánh giá: ${s.score || '8'}/10</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+// 11. Load Paginated Responses Table
+async function loadResponsesTable(page = 1) {
+  const search = document.getElementById('table-search-input')?.value || '';
+  const dept = document.getElementById('filter-department')?.value || 'all';
+
+  try {
+    const res = await fetch(`/api/responses?page=${page}&limit=10&search=${encodeURIComponent(search)}&department=${dept}`);
+    const data = await res.json();
+
+    const tbody = document.getElementById('responses-table-body');
+    if (tbody) {
+      if (data.items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">Không tìm thấy bản ghi khảo sát nào.</td></tr>';
+      } else {
+        const roleMap = { bacsi: 'Bác sĩ', dieuduong: 'Điều dưỡng', kythuatvien: 'KTV', duocsi: 'Dược sĩ', quanly_hanhchinh: 'Hành chính' };
+        const deptMap = { noi: 'Lâm sàng Nội', ngoai: 'Lâm sàng Ngoại', capcuu: 'Khám bệnh - Cấp cứu', canlamsang: 'Cận lâm sàng', hanhchinh: 'Hành chính' };
+
+        tbody.innerHTML = data.items.map(item => `
+          <tr>
+            <td><strong style="color:#0f766e;">${item.id}</strong></td>
+            <td>${new Date(item.submittedAt).toLocaleDateString('vi-VN')}</td>
+            <td>${deptMap[item.demographics?.department] || item.demographics?.department}</td>
+            <td>${roleMap[item.demographics?.role] || item.demographics?.role}</td>
+            <td><span class="kpi-badge badge-good">${item.overall?.score || 8} / 10</span></td>
+            <td><span style="font-size:12px; color:#475569;">${item.overall?.suggestions ? item.overall.suggestions.slice(0, 35) + '...' : '<em style="color:#94a3b8">Không có</em>'}</span></td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    // Pagination controls
+    const pageLabel = document.getElementById('table-page-info');
+    if (pageLabel) {
+      pageLabel.innerText = `Trang ${data.page} / ${data.totalPages || 1} (Tổng ${data.total} phiếu)`;
+    }
+
+    const prevBtn = document.getElementById('table-prev-btn');
+    const nextBtn = document.getElementById('table-next-btn');
+    if (prevBtn) prevBtn.disabled = data.page <= 1;
+    if (nextBtn) nextBtn.disabled = data.page >= data.totalPages;
+
+    // Store current page
+    tbody?.setAttribute('data-current-page', data.page);
+  } catch (err) {
+    console.error('Error loading responses:', err);
+  }
+}
+
+// 12. Setup UI Event Listeners
+function setupEventListeners() {
+  // Department filter change
+  document.getElementById('filter-department')?.addEventListener('change', () => {
+    loadDashboardStats();
+    loadResponsesTable(1);
+  });
+
+  // Table search
+  document.getElementById('table-search-input')?.addEventListener('input', () => {
+    loadResponsesTable(1);
+  });
+
+  // Pagination buttons
+  document.getElementById('table-prev-btn')?.addEventListener('click', () => {
+    const tbody = document.getElementById('responses-table-body');
+    const cur = parseInt(tbody?.getAttribute('data-current-page') || 1, 10);
+    if (cur > 1) loadResponsesTable(cur - 1);
+  });
+
+  document.getElementById('table-next-btn')?.addEventListener('click', () => {
+    const tbody = document.getElementById('responses-table-body');
+    const cur = parseInt(tbody?.getAttribute('data-current-page') || 1, 10);
+    loadResponsesTable(cur + 1);
+  });
+
+  // Refresh button
+  document.getElementById('btn-refresh')?.addEventListener('click', () => {
+    loadDashboardStats();
+    loadResponsesTable(1);
+  });
+
+  // Mock data generator
+  document.getElementById('btn-generate-mock')?.addEventListener('click', async () => {
+    if (confirm('Bạn có muốn tạo 500 phiếu khảo sát mô phỏng chân thực theo cơ cấu bệnh viện để kiểm tra toàn diện hệ thống?')) {
+      const btn = document.getElementById('btn-generate-mock');
+      btn.innerText = 'Đang khởi tạo 500 phiếu...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/mock-data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ count: 500 })
+        });
+        const json = await res.json();
+        alert(json.message);
+        await loadDashboardStats();
+        await loadResponsesTable(1);
+      } catch (e) {
+        alert('Lỗi khi sinh dữ liệu mẫu.');
+      } finally {
+        btn.innerText = 'Tạo 500 Dữ Liệu Mẫu';
+        btn.disabled = false;
+      }
+    }
+  });
+
+  // Clear data button
+  document.getElementById('btn-clear-data')?.addEventListener('click', async () => {
+    if (confirm('LƯU Ý: Thao tác này sẽ xóa toàn bộ phiếu khảo sát hiện có trong cơ sở dữ liệu để bắt đầu đợt mới. Bạn có chắc chắn không?')) {
+      try {
+        const res = await fetch('/api/clear-data', { method: 'POST' });
+        const json = await res.json();
+        alert(json.message);
+        await loadDashboardStats();
+        await loadResponsesTable(1);
+      } catch (e) {
+        alert('Lỗi khi xóa dữ liệu.');
+      }
+    }
+  });
+
+  // QR Modal Open/Close
+  const qrModal = document.getElementById('qr-modal');
+  document.getElementById('btn-open-qr')?.addEventListener('click', () => {
+    if (qrModal) qrModal.classList.add('active');
+  });
+
+  document.getElementById('btn-close-qr')?.addEventListener('click', () => {
+    if (qrModal) qrModal.classList.remove('active');
+  });
+
+  qrModal?.addEventListener('click', (e) => {
+    if (e.target === qrModal) qrModal.classList.remove('active');
+  });
+
+  // Print QR poster
+  document.getElementById('btn-print-qr')?.addEventListener('click', () => {
+    window.print();
+  });
+}

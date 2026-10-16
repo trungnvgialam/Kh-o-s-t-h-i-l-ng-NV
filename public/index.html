@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Khảo Sát Sự Hài Lòng Nhân Viên Y Tế - Chuẩn Bộ Y Tế</title>
+  <meta name="description" content="Hệ thống khảo sát sự hài lòng của 500 nhân viên y tế theo bộ tiêu chí chất lượng bệnh viện của Bộ Y tế Việt Nam.">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏥</text></svg>">
+</head>
+<body>
+
+  <div class="survey-container">
+    <!-- HEADER HERO -->
+    <header class="survey-header">
+      <div class="header-badge-row">
+        <span class="header-badge">🏥 PHIẾU KHẢO SÁT CHUẨN BỘ Y TẾ VIỆT NAM</span>
+        <a href="admin.html" class="admin-link-btn" title="Chuyển sang trang Báo cáo Quản trị">
+          📊 Báo Cáo Quản Trị
+        </a>
+      </div>
+      <h1>Khảo Sát Sự Hài Lòng Của Nhân Viên Y Tế</h1>
+      <p>
+        Nhằm nâng cao chất lượng môi trường làm việc, chế độ đãi ngộ và công tác quản lý tại bệnh viện, 
+        kính mong toàn thể cán bộ, nhân viên y tế dành ít phút đóng góp ý kiến khách quan và chân thành.
+      </p>
+      <div class="confidential-notice">
+        <span>🔒 <strong>Cam kết 100% ẨN DANH:</strong> Phiếu khảo sát không thu thập họ tên cá nhân. Kết quả chỉ phục vụ phân tích cải tiến chất lượng bệnh viện.</span>
+      </div>
+    </header>
+
+    <!-- STICKY PROGRESS BAR & STEP TABS -->
+    <div class="progress-sticky-wrapper">
+      <div class="progress-card">
+        <div class="progress-header">
+          <span class="progress-title" id="progress-step-title">
+            <span>📋</span> Tiến trình hoàn thành
+          </span>
+          <span class="progress-pct" id="progress-pct">0% hoàn thành</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <div class="steps-nav">
+          <div class="step-tab active" data-step="1">1. Phân loại NV</div>
+          <div class="step-tab" data-step="2">2. Nhóm A & B</div>
+          <div class="step-tab" data-step="3">3. Nhóm C & D</div>
+          <div class="step-tab" data-step="4">4. Nhóm E & Chung</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN FORM VIEW -->
+    <main id="survey-form">
+      <!-- STEP 1: DEMOGRAPHICS -->
+      <section class="survey-section active" id="step-1">
+        <div class="card section-intro-card">
+          <span class="section-badge">👤 Phần 1</span>
+          <h2 class="section-title">Thông Tin Phân Loại Công Tác</h2>
+          <p class="section-desc">Thông tin giúp phân tích số liệu theo khoa/phòng và chức danh chuyên môn (hoàn toàn ẩn danh)</p>
+        </div>
+
+        <div class="card">
+          <div id="demographics-container">
+            <!-- Dynamically populated by survey.js -->
+          </div>
+        </div>
+      </section>
+
+      <!-- STEP 2: GROUPS A & B -->
+      <section class="survey-section" id="step-2">
+        <div id="step-2-content">
+          <!-- Rendered by survey.js -->
+        </div>
+      </section>
+
+      <!-- STEP 3: GROUPS C & D -->
+      <section class="survey-section" id="step-3">
+        <div id="step-3-content">
+          <!-- Rendered by survey.js -->
+        </div>
+      </section>
+
+      <!-- STEP 4: GROUP E & OVERALL -->
+      <section class="survey-section" id="step-4">
+        <div id="step-4-content">
+          <!-- Rendered by survey.js -->
+        </div>
+      </section>
+    </main>
+
+    <!-- SUCCESS CONFIRMATION VIEW (HIDDEN INITIALLY) -->
+    <div class="card success-screen" id="success-view" style="display: none;">
+      <div class="success-icon">✓</div>
+      <h2>Gửi Phiếu Khảo Sát Thành Công!</h2>
+      <p>
+        Chân thành cảm ơn sự đóng góp quý báu của đồng chí/anh chị. Ý kiến của bạn là cơ sở quan trọng giúp 
+        Ban Giám đốc bệnh viện không ngừng cải tiến môi trường làm việc và chế độ đãi ngộ.
+      </p>
+      <div class="code-receipt">
+        Mã xác nhận bảo mật: <strong id="receipt-id" style="color: #0d9488;">NV-0000</strong>
+      </div>
+      <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+        <button class="btn btn-secondary" onclick="window.location.reload()">
+          🔄 Làm phiếu khảo sát mới
+        </button>
+        <a href="admin.html" class="btn btn-primary" style="text-decoration: none;">
+          📊 Xem Dashboard Thống Kê
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOATING / STICKY BOTTOM ACTION BAR -->
+  <footer class="bottom-bar">
+    <div class="bottom-bar-inner">
+      <div class="draft-status" id="draft-status">
+        <span class="dot"></span> Tự động lưu nháp
+      </div>
+      <div class="action-buttons">
+        <button type="button" class="btn btn-secondary" id="btn-prev" style="display: none;">
+          ← Quay lại
+        </button>
+        <button type="button" class="btn btn-primary" id="btn-next">
+          Tiếp tục →
+        </button>
+        <button type="button" class="btn btn-success" id="btn-submit" style="display: none;">
+          ✓ Gửi Phiếu Khảo Sát
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/questions.js"></script>
+  <script src="js/survey.js"></script>
+</body>
+</html>

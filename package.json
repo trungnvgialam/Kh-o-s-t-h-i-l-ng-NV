@@ -1,0 +1,15 @@
+{
+  "name": "khao-sat-hai-long-nv",
+  "version": "1.0.0",
+  "description": "Hệ thống Khảo sát sự hài lòng nhân viên y tế (500 NV) theo chuẩn Bộ Y tế",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "cors": "^2.8.5",
+    "xlsx": "^0.18.5"
+  }
+}

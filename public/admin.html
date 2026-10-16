@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Báo Cáo & Phân Tích Sự Hài Lòng Nhân Viên Y Tế - Chuẩn Bộ Y Tế</title>
+  <meta name="description" content="Dashboard quản trị phân tích số liệu khảo sát sự hài lòng 500 nhân viên y tế theo tiêu chí Bộ Y tế Việt Nam.">
+  <link rel="stylesheet" href="css/admin.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📊</text></svg>">
+</head>
+<body>
+
+  <!-- TOP NAVIGATION BAR -->
+  <header class="admin-navbar">
+    <div class="brand-section">
+      <div class="brand-icon">🏥</div>
+      <div class="brand-text">
+        <h1>Báo Cáo Sự Hài Lòng Nhân Viên Y Tế</h1>
+        <p>Quy mô: 500 Cán bộ y tế • Tiêu chí chất lượng Bệnh viện - Bộ Y tế</p>
+      </div>
+    </div>
+
+    <div class="navbar-actions">
+      <button type="button" class="btn-outline" id="btn-open-qr">
+        📱 Mã QR Khảo Sát
+      </button>
+      <a href="/api/export-excel" class="btn-action-primary" id="btn-export-excel" download>
+        📥 Xuất Excel (.xlsx)
+      </a>
+      <button type="button" class="btn-outline" onclick="window.print()">
+        🖨️ In Báo Cáo / PDF
+      </button>
+      <button type="button" class="btn-outline" id="btn-generate-mock" title="Tạo 500 phản hồi giả lập để thử nghiệm tính năng">
+        ⚡ Tạo 500 Dữ Liệu Mẫu
+      </button>
+      <button type="button" class="btn-outline" id="btn-clear-data" style="color: #b91c1c;" title="Xóa dữ liệu để làm đợt khảo sát mới">
+        🗑️ Làm Mới
+      </button>
+      <a href="index.html" class="btn-outline" target="_blank">
+        🔗 Đến Trang Khảo Sát
+      </a>
+    </div>
+  </header>
+
+  <main class="dashboard-wrapper">
+    <!-- TARGET PROGRESS BANNER -->
+    <section class="progress-target-card">
+      <div class="target-info">
+        <h2>Tiến Độ Thu Thập Phiếu Khảo Sát (Mục tiêu: 500 Nhân viên y tế)</h2>
+        <p>Dữ liệu được cập nhật tự động khi có nhân viên y tế nộp phiếu qua điện thoại hoặc máy tính</p>
+      </div>
+      <div class="target-bar-wrap">
+        <div class="target-numbers">
+          <span id="target-count-label">0 / 500 Phiếu</span>
+          <span id="target-pct-label" style="color: #38bdf8;">0% Mục tiêu</span>
+        </div>
+        <div class="target-track">
+          <div class="target-fill" id="target-fill"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FILTER TOOLBAR -->
+    <section class="filter-toolbar">
+      <div class="filter-left">
+        <span class="filter-label">🔍 Lọc dữ liệu theo Khối:</span>
+        <select id="filter-department" class="filter-select">
+          <option value="all">-- Tất cả các Khối / Khoa phòng toàn viện --</option>
+          <option value="noi">Khối Lâm sàng Nội</option>
+          <option value="ngoai">Khối Lâm sàng Ngoại</option>
+          <option value="capcuu">Khối Khám bệnh & Cấp cứu</option>
+          <option value="canlamsang">Khối Cận lâm sàng & Dược</option>
+          <option value="hanhchinh">Khối Phòng ban chức năng</option>
+        </select>
+        <button type="button" class="btn-outline" id="btn-refresh" style="padding: 7px 12px;">
+          🔄 Tải lại số liệu
+        </button>
+      </div>
+      <div style="font-size: 13px; color: #64748b;">
+        Phương pháp tính: Điểm trung bình Likert 5 mức & Thang CSI (%)
+      </div>
+    </section>
+
+    <!-- 4 KEY KPI CARDS -->
+    <section class="kpi-grid">
+      <!-- KPI 1 -->
+      <div class="kpi-card">
+        <div class="kpi-top">
+          <span class="kpi-label">Tổng Số Phiếu Đã Nộp</span>
+          <div class="kpi-icon-pill kpi-icon-teal">📝</div>
+        </div>
+        <div class="kpi-value-row">
+          <span class="kpi-value" id="kpi-total-responses">0</span>
+          <span class="kpi-unit">/ 500 NV</span>
+        </div>
+        <p class="kpi-desc">Tổng số cán bộ nhân viên đã hoàn thành phiếu khảo sát</p>
+      </div>
+
+      <!-- KPI 2 -->
+      <div class="kpi-card">
+        <div class="kpi-top">
+          <span class="kpi-label">Chỉ Số Hài Lòng Chung (CSI)</span>
+          <div class="kpi-icon-pill kpi-icon-emerald">⭐</div>
+        </div>
+        <div class="kpi-value-row">
+          <span class="kpi-value" id="kpi-csi-score">0</span>
+          <span class="kpi-unit">%</span>
+          <span class="kpi-badge badge-good" id="badge-csi">Đang tải</span>
+        </div>
+        <p class="kpi-desc">Tỷ lệ hài lòng bình quân trên 23 tiêu chí Bộ Y tế</p>
+      </div>
+
+      <!-- KPI 3 -->
+      <div class="kpi-card">
+        <div class="kpi-top">
+          <span class="kpi-label">Điểm Hài Lòng Toàn Viện</span>
+          <div class="kpi-icon-pill kpi-icon-blue">🏥</div>
+        </div>
+        <div class="kpi-value-row">
+          <span class="kpi-value" id="kpi-overall-score">0</span>
+          <span class="kpi-unit">/ 10 Điểm</span>
+        </div>
+        <p class="kpi-desc">Điểm đánh giá chung trực tiếp do nhân viên chấm</p>
+      </div>
+
+      <!-- KPI 4 -->
+      <div class="kpi-card">
+        <div class="kpi-top">
+          <span class="kpi-label">Chỉ Số Gắn Kết (eNPS)</span>
+          <div class="kpi-icon-pill kpi-icon-amber">🤝</div>
+        </div>
+        <div class="kpi-value-row">
+          <span class="kpi-value" id="kpi-enps-score">0</span>
+          <span class="kpi-badge badge-excellent" id="badge-enps">Tốt</span>
+        </div>
+        <p class="kpi-desc">Mức độ sẵn sàng gắn bó và giới thiệu bệnh viện</p>
+      </div>
+    </section>
+
+    <!-- CHARTS ROW 1: RADAR & ROLES -->
+    <section class="charts-grid-2">
+      <!-- Radar Chart: 5 dimensions -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <h3>Đánh Giá 5 Khía Cạnh Cốt Lõi (Chuẩn Bộ Y Tế)</h3>
+            <p class="chart-sub">Biểu đồ mạng nhện so sánh điểm trung bình giữa 5 nhóm tiêu chí</p>
+          </div>
+        </div>
+        <div class="chart-container-radar">
+          <canvas id="radarGroupChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Doughnut Chart: Roles -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <h3>Cơ Cấu Chức Danh Nhân Viên Tham Gia</h3>
+            <p class="chart-sub">Tỷ lệ phân bổ giữa Bác sĩ, Điều dưỡng, KTV, Dược sĩ, Hành chính</p>
+          </div>
+        </div>
+        <div class="chart-container-radar">
+          <canvas id="roleDoughnutChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHARTS ROW 2: CRITERIA BAR & COMMITMENT -->
+    <section class="charts-grid-2">
+      <!-- Horizontal Bar Chart: 23 individual criteria -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <h3>Chi Tiết Điểm Hài Lòng Theo Từng Tiêu Chí</h3>
+            <p class="chart-sub">Xếp hạng 23 tiêu chí từ cao xuống thấp (Màu xanh: ≥4.0, Màu vàng: 3.3-3.9, Màu đỏ: <3.3)</p>
+          </div>
+        </div>
+        <div class="chart-container-full">
+          <canvas id="barCriteriaChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Doughnut Chart: Commitment -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <h3>Dự Định Gắn Bó Làm Việc (3 - 5 Năm Tới)</h3>
+            <p class="chart-sub">Tỷ lệ cam kết gắn bó lâu dài của nhân viên y tế</p>
+          </div>
+        </div>
+        <div class="chart-container-radar" style="margin-bottom: 20px;">
+          <canvas id="commitmentDoughnutChart"></canvas>
+        </div>
+        <!-- Department benchmark table -->
+        <div style="border-top: 1px solid #e2e8f0; padding-top: 16px;">
+          <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 8px;">So Sánh Điểm Hài Lòng Giữa Các Khối:</h4>
+          <div class="dept-table-wrap">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>Khối công tác</th>
+                  <th>Số phiếu</th>
+                  <th>Điểm TB</th>
+                  <th>Chỉ số CSI</th>
+                </tr>
+              </thead>
+              <tbody id="dept-table-body">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRIORITY ACTION MATRIX (STRENGTHS VS BOTTLE-NECKS) -->
+    <section class="chart-card" style="margin-bottom: 28px;">
+      <div class="chart-header">
+        <div>
+          <h3>Ma Trận Ưu Tiên Hành Động Cải Tiến Chất Lượng Bệnh Viện</h3>
+          <p class="chart-sub">Xác định điểm sáng để tiếp tục phát huy và điểm nghẽn cần Ban Giám đốc chỉ đạo can thiệp ngay</p>
+        </div>
+      </div>
+
+      <div class="matrix-grid" style="margin-bottom: 0;">
+        <!-- Left: Strengths -->
+        <div class="matrix-card" style="border-color: #a7f3d0; background: #f0fdf4;">
+          <div class="matrix-header strengths">
+            <span style="font-size: 20px;">🌟</span>
+            <h3>Top 5 Tiêu Chí Hài Lòng Cao Nhất (Điểm Sáng)</h3>
+          </div>
+          <div class="matrix-list" id="matrix-strengths-list">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- Right: Concerns -->
+        <div class="matrix-card" style="border-color: #fecaca; background: #fef2f2;">
+          <div class="matrix-header concerns">
+            <span style="font-size: 20px;">⚠️</span>
+            <h3>Top 5 Tiêu Chí Cần Ưu Tiên Cải Thiện (Điểm Nghẽn)</h3>
+          </div>
+          <div class="matrix-list" id="matrix-concerns-list">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- QUALITATIVE SUGGESTIONS WALL -->
+    <section class="chart-card" style="margin-bottom: 28px;">
+      <div class="chart-header">
+        <div>
+          <h3>Ý Kiến Đóng Góp & Hiến Kế Của Nhân Viên Y Tế</h3>
+          <p class="chart-sub">Ghi nhận các đề xuất, tâm tư nguyện vọng gửi tới Ban Giám đốc</p>
+        </div>
+      </div>
+      <div class="feedback-grid" id="feedback-wall">
+        <!-- Dynamically populated -->
+      </div>
+    </section>
+
+    <!-- RESPONSES DATA TABLE -->
+    <section class="chart-card">
+      <div class="chart-header">
+        <div>
+          <h3>Danh Sách Chi Tiết Các Phiếu Khảo Sát</h3>
+          <p class="chart-sub">Tra cứu và kiểm tra từng bản ghi phản hồi (Dữ liệu hoàn toàn ẩn danh)</p>
+        </div>
+        <div>
+          <input type="text" id="table-search-input" placeholder="🔍 Tìm mã phiếu hoặc ý kiến..." style="padding: 7px 12px; border: 1.5px solid #cbd5e1; border-radius: 6px; font-size: 13px; outline: none; width: 240px;">
+        </div>
+      </div>
+
+      <div class="dept-table-wrap">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Mã Phiếu</th>
+              <th>Ngày Nộp</th>
+              <th>Khối Công Tác</th>
+              <th>Chức Danh</th>
+              <th>Đánh Giá Chung</th>
+              <th>Trích Đoạn Ý Kiến</th>
+            </tr>
+          </thead>
+          <tbody id="responses-table-body">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination bar -->
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 16px; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 13px;">
+        <span id="table-page-info" style="color: #64748b;">Đang tải...</span>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn-outline" id="table-prev-btn" style="padding: 5px 12px;">← Trang trước</button>
+          <button type="button" class="btn-outline" id="table-next-btn" style="padding: 5px 12px;">Trang sau →</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- QR CODE MODAL OVERLAY -->
+  <div class="modal-overlay" id="qr-modal">
+    <div class="modal-content">
+      <button class="modal-close-btn" id="btn-close-qr" title="Đóng">✕</button>
+      <div class="qr-poster-preview">
+        <h4>🏥 BỆNH VIỆN / CƠ SỞ Y TẾ</h4>
+        <p>Phiếu Khảo Sát Sự Hài Lòng Của Nhân Viên Y Tế</p>
+        
+        <div id="qrcode-container"></div>
+
+        <p style="font-size: 13px; font-weight: 600; color: #0f766e; margin-bottom: 8px;">
+          📱 Dùng camera điện thoại để quét mã QR và làm bài
+        </p>
+        <div class="qr-url-text" id="qr-survey-url">http://localhost:3000</div>
+      </div>
+
+      <div style="display: flex; gap: 10px; justify-content: center;">
+        <button type="button" class="btn-action-primary" id="btn-print-qr">
+          🖨️ In Áp Phích Dán Tại Khoa
+        </button>
+        <button type="button" class="btn-outline" onclick="window.open(document.getElementById('qr-survey-url').innerText, '_blank')">
+          🌐 Mở Trực Tiếp Trên Web
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="vendor/chart.umd.min.js"></script>
+  <script src="vendor/qrcode.min.js"></script>
+  <script src="js/questions.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
