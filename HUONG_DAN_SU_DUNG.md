@@ -247,11 +247,13 @@ Hệ thống đã được **nâng cấp lên mức tối đa** với công ngh�
 
 ## 7. XỬ LÝ SỰ CỐ THƯỜNG GẶP (FAQ)
 
-### Q1: Nhân viên quét mã QR trên điện thoại nhưng báo "Không thể kết nối máy chủ"?
-- **Nguyên nhân:** Điện thoại chưa kết nối cùng mạng Wi-Fi với máy tính chạy hệ thống, hoặc tường lửa Windows (Windows Defender Firewall) đang chặn cổng 3000.
-- **Cách xử lý:**
-  1. Đảm bảo điện thoại và máy tính chạy server đang dùng chung một mạng Wi-Fi nội bộ bệnh viện.
-  2. Mở *Windows Defender Firewall* ➔ Chọn *Allow an app or feature through Windows Defender Firewall* ➔ Cho phép `Node.js` kết nối mạng Private/Public.
+### Q1: Quét mã QR trên điện thoại nhưng không được hoặc báo "Không thể kết nối máy chủ"?
+- **Nguyên nhân 1: Tường lửa Windows (Windows Defender Firewall) đang chặn cổng 3000.**
+  - **Cách xử lý nhanh nhất (1 cú click):** Trong thư mục dự án, tìm tệp [Mo_Cong_Tuong_Lua_3000.bat](file:///h:/ch%C6%B0%C6%A1ng%20tr%C3%ACnh%20demo/Kh%E1%BA%A3o%20s%C3%A1t%20h%C3%A0i%20l%C3%B2ng%20NV/Mo_Cong_Tuong_Lua_3000.bat) ➔ Nhấp **chuột phải** ➔ Chọn **"Run as administrator"** (Chạy dưới quyền Quản trị viên). Chương trình sẽ tự động mở cổng 3000 trong tường lửa.
+- **Nguyên nhân 2: Điện thoại không kết nối cùng mạng Wi-Fi với máy tính chạy hệ thống.**
+  - **Cách xử lý:** Đảm bảo điện thoại đã kết nối vào cùng mạng Wi-Fi của cơ quan/bệnh viện với máy tính (không bật 4G/5G khi quét mã QR).
+- **Nguyên nhân 3: Ứng dụng quét camera không nhận nét mã trên màn hình.**
+  - **Cách xử lý:** Mã QR đã được tối ưu hóa sang màu đen tuyền quang học 100% với viền trắng rõ nét. Có thể dùng ứng dụng **Zalo** (chọn biểu tượng quét QR góc trên cùng bên phải) hoặc **Camera gốc** của iPhone/Android để quét cực kỳ nhạy. Ngoài ra bạn có thể bấm nút **"📋 Sao chép"** liên kết trong popup QR để gửi trực tiếp vào nhóm Zalo nội bộ.
 
 ### Q2: Quên mật khẩu quản trị viên hoặc muốn đổi mật khẩu mới?
 - Mở tệp [server.js](file:///h:/ch%C6%B0%C6%A1ng%20tr%C3%ACnh%20demo/Kh%E1%BA%A3o%20s%C3%A1t%20h%C3%A0i%20l%C3%B2ng%20NV/server.js) bằng Notepad hoặc VS Code.

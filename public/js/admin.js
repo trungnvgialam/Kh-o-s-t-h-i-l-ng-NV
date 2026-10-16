@@ -73,27 +73,31 @@ async function loadSystemConfig() {
     const res = await fetch('/api/config');
     systemConfig = await res.json();
 
-    const qrUrl = systemConfig.networkUrl || systemConfig.localUrl;
-    const qrUrlDisplay = document.getElementById('qr-survey-url');
-    if (qrUrlDisplay) {
-      qrUrlDisplay.innerText = qrUrl;
+    const qrUrl = systemConfig.networkUrl || systemConfig.localUrl || window.location.origin;
+    const qrInput = document.getElementById('qr-survey-url-input');
+    if (qrInput) {
+      qrInput.value = qrUrl;
     }
 
-    // Generate QR Code
-    const qrContainer = document.getElementById('qrcode-container');
-    if (qrContainer && window.QRCode) {
-      qrContainer.innerHTML = '';
-      qrCodeInstance = new QRCode(qrContainer, {
-        text: qrUrl,
-        width: 200,
-        height: 200,
-        colorDark: '#0f766e',
-        colorLight: '#ffffff',
-        correctLevel: QRCode.CorrectLevel.H
-      });
-    }
+    renderQrCode(qrUrl);
   } catch (err) {
     console.error('Error loading config:', err);
+  }
+}
+
+// Hàm kết xuất mã QR chuẩn độ tương phản cao cho camera điện thoại & Zalo
+function renderQrCode(url) {
+  const qrContainer = document.getElementById('qrcode-container');
+  if (qrContainer && window.QRCode) {
+    qrContainer.innerHTML = '';
+    qrCodeInstance = new QRCode(qrContainer, {
+      text: url,
+      width: 230,
+      height: 230,
+      colorDark: '#000000',               // Đen tuyền 100%: Bắt nét camera cực nhanh
+      colorLight: '#ffffff',              // Nền trắng tinh khiết
+      correctLevel: QRCode.CorrectLevel.M // Mức sửa lỗi M tối ưu quét màn hình & in ấn
+    });
   }
 }
 
@@ -665,6 +669,35 @@ function setupEventListeners() {
 
   qrModal?.addEventListener('click', (e) => {
     if (e.target === qrModal) qrModal.classList.remove('active');
+  });
+
+  // Copy QR URL button
+  document.getElementById('btn-copy-qr-url')?.addEventListener('click', async () => {
+    const urlInput = document.getElementById('qr-survey-url-input');
+    if (!urlInput || !urlInput.value) return;
+    try {
+      await navigator.clipboard.writeText(urlInput.value);
+      const toast = document.getElementById('copy-toast');
+      if (toast) {
+        toast.style.display = 'inline';
+        setTimeout(() => { toast.style.display = 'none'; }, 2500);
+      }
+    } catch (_) {
+      urlInput.select();
+      document.execCommand('copy');
+      const toast = document.getElementById('copy-toast');
+      if (toast) {
+        toast.style.display = 'inline';
+        setTimeout(() => { toast.style.display = 'none'; }, 2500);
+      }
+    }
+  });
+
+  // Open Direct URL in new tab
+  document.getElementById('btn-open-direct-url')?.addEventListener('click', () => {
+    const urlInput = document.getElementById('qr-survey-url-input');
+    const url = urlInput ? urlInput.value : window.location.origin;
+    window.open(url, '_blank');
   });
 
   // Print QR poster

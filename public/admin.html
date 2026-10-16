@@ -321,25 +321,47 @@
 
   <!-- QR CODE MODAL OVERLAY -->
   <div class="modal-overlay" id="qr-modal">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width: 500px;">
       <button class="modal-close-btn" id="btn-close-qr" title="Đóng">✕</button>
       <div class="qr-poster-preview">
         <h4>🏥 BỆNH VIỆN / CƠ SỞ Y TẾ</h4>
-        <p>Phiếu Khảo Sát Sự Hài Lòng Của Nhân Viên Y Tế</p>
+        <p style="margin-bottom: 12px;">Phiếu Khảo Sát Sự Hài Lòng Của Nhân Viên Y Tế (500 NV)</p>
         
+        <!-- QR Code Container: Đen tuyền tương phản quang học 100% -->
         <div id="qrcode-container"></div>
 
-        <p style="font-size: 13px; font-weight: 600; color: #0f766e; margin-bottom: 8px;">
-          📱 Dùng camera điện thoại để quét mã QR và làm bài
+        <p style="font-size: 13.5px; font-weight: 700; color: #0f766e; margin-top: 10px; margin-bottom: 8px;">
+          📱 Dùng camera điện thoại hoặc Zalo quét mã QR để làm bài
         </p>
-        <div class="qr-url-text" id="qr-survey-url">http://localhost:3000</div>
+
+        <!-- Dynamic IP & Copy URL box -->
+        <div style="margin: 10px 0 14px; text-align: left;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <label style="font-size: 12px; font-weight: 600; color: #475569;">
+              Đường dẫn khảo sát qua Wi-Fi:
+            </label>
+            <span id="copy-toast" style="font-size: 11px; font-weight: 600; color: #059669; display: none;">✓ Đã sao chép!</span>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="qr-survey-url-input" class="form-input" style="font-family: monospace; font-size: 13px; font-weight: 600; color: #0f766e; padding: 8px 10px; flex: 1; background: #f8fafc;" readonly />
+            <button type="button" class="btn-outline" id="btn-copy-qr-url" title="Sao chép liên kết gửi Zalo/Email" style="padding: 8px 12px; white-space: nowrap;">
+              📋 Sao chép
+            </button>
+          </div>
+        </div>
+
+        <div id="qr-connection-note" style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #0f766e; padding: 10px 12px; border-radius: 6px; font-size: 12px; color: #334155; line-height: 1.5; text-align: left; margin-bottom: 14px;">
+          <strong>💡 Điều kiện kết nối thành công:</strong><br>
+          1. Điện thoại cần kết nối <b>cùng mạng Wi-Fi</b> với máy tính này (tắt 4G/5G).<br>
+          2. Nếu điện thoại báo không kết nối được: Chạy tệp <code>Mo_Cong_Tuong_Lua_3000.bat</code> (chuột phải chọn Run as administrator) để mở tường lửa Windows.
+        </div>
       </div>
 
       <div style="display: flex; gap: 10px; justify-content: center;">
         <button type="button" class="btn-action-primary" id="btn-print-qr">
           🖨️ In Áp Phích Dán Tại Khoa
         </button>
-        <button type="button" class="btn-outline" onclick="window.open(document.getElementById('qr-survey-url').innerText, '_blank')">
+        <button type="button" class="btn-outline" id="btn-open-direct-url">
           🌐 Mở Trực Tiếp Trên Web
         </button>
       </div>
