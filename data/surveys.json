@@ -21208,5 +21208,47 @@
       "enps": 9,
       "suggestions": "Thử nghiệm nộp đồng thời #3"
     }
+  },
+  {
+    "id": "NV-0506",
+    "submittedAt": "2026-10-16T07:53:39.682Z",
+    "demographics": {
+      "department": "ngoai",
+      "role": "dieuduong",
+      "experience": "tren10",
+      "gender": "nu",
+      "degree": "daihoc"
+    },
+    "answers": {
+      "a1": 4,
+      "a2": 3,
+      "a3": 4,
+      "a4": 4,
+      "a5": 3,
+      "b1": 4,
+      "b2": 4,
+      "b3": 4,
+      "b4": 4,
+      "b5": 4,
+      "c1": 2,
+      "c2": 4,
+      "c3": 4,
+      "c4": 4,
+      "c5": 3,
+      "d1": 4,
+      "d2": 4,
+      "d3": 4,
+      "d4": 4,
+      "e1": 4,
+      "e2": 4,
+      "e3": 4,
+      "e4": 4
+    },
+    "overall": {
+      "score": 8,
+      "commitment": "co_the",
+      "enps": 8,
+      "suggestions": "BGĐ nghiên cứu tính thu nhập tăng thêm dựa trên kết quả am toàn, chất lượng,  sự cống hiến và thu thực tế đóng góp của khoa phòng cho Bệnh viện. Làm nhiều hưởng nhiều làm ít hưởng ít, chứ không phải làm nhiều nhưng ABC lại thấp"
+    }
   }
 ]
