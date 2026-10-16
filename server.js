@@ -9,9 +9,16 @@ const XLSX = require('xlsx');
 const SURVEY_CONFIG = require('./questions');
 const db = require('./db');
 
+const isServerless = Boolean(
+  process.env.VERCEL === '1' ||
+  process.env.AWS_LAMBDA_FUNCTION_NAME ||
+  process.env.LAMBDA_TASK_ROOT ||
+  process.env.NOW_REGION
+);
+const DATA_DIR = isServerless ? path.join(os.tmpdir(), 'khao-sat-data') : path.join(__dirname, 'data');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DATA_DIR = path.join(__dirname, 'data');
 
 // ADMIN CREDENTIALS CONFIGURATION
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';

@@ -6,8 +6,20 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
-const DATA_DIR = path.join(__dirname, 'data');
+// Nhận diện môi trường Serverless (Vercel, AWS Lambda)
+const isServerless = Boolean(
+  process.env.VERCEL === '1' ||
+  process.env.AWS_LAMBDA_FUNCTION_NAME ||
+  process.env.LAMBDA_TASK_ROOT ||
+  process.env.NOW_REGION
+);
+
+const BUNDLED_DIR = path.join(__dirname, 'data');
+// Trên serverless (/var/task là read-only), chỉ duy nhất thư mục tạm tmpdir (/tmp) có quyền ghi file
+const DATA_DIR = isServerless ? path.join(os.tmpdir(), 'khao-sat-data') : BUNDLED_DIR;
+
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
@@ -15,16 +27,46 @@ if (!fs.existsSync(DATA_DIR)) {
 const DB_FILE = path.join(DATA_DIR, 'surveys.db');
 const JSON_FILE = path.join(DATA_DIR, 'surveys.json');
 const BACKUP_JSON_FILE = path.join(DATA_DIR, 'surveys.backup.json');
+const CLEARED_MARKER = path.join(DATA_DIR, '.cleared');
+
+// Nếu chạy trên serverless và chưa có file db trong /tmp
+if (isServerless && !fs.existsSync(DB_FILE)) {
+  if (!fs.existsSync(CLEARED_MARKER)) {
+    const bundledDb = path.join(BUNDLED_DIR, 'surveys.db');
+    if (fs.existsSync(bundledDb)) {
+      try {
+        fs.copyFileSync(bundledDb, DB_FILE);
+      } catch (err) {
+        console.warn('[Serverless Init Warning]: Không thể sao chép surveys.db sẵn có:', err.message);
+      }
+    }
+    const bundledJson = path.join(BUNDLED_DIR, 'surveys.json');
+    if (fs.existsSync(bundledJson) && !fs.existsSync(JSON_FILE)) {
+      try { fs.copyFileSync(bundledJson, JSON_FILE); } catch (_) {}
+    }
+    const bundledBackup = path.join(BUNDLED_DIR, 'surveys.backup.json');
+    if (fs.existsSync(bundledBackup) && !fs.existsSync(BACKUP_JSON_FILE)) {
+      try { fs.copyFileSync(bundledBackup, BACKUP_JSON_FILE); } catch (_) {}
+    }
+  }
+}
 
 // Khởi tạo kết nối SQLite với file database
 const db = new Database(DB_FILE);
 
-// Kích hoạt các PRAGMA chuẩn doanh nghiệp tối ưu hiệu năng & độ bền dữ liệu mức tối đa
-db.pragma('journal_mode = WAL');       // Write-Ahead Logging: Đọc & ghi đồng thời không bị khóa (non-blocking)
+// Kích hoạt các PRAGMA chuẩn doanh nghiệp tối ưu hiệu năng & độ bền dữ liệu
+if (isServerless) {
+  // Trên môi trường container serverless, chế độ DELETE an toàn tuyệt đối, không phụ thuộc bộ nhớ chia sẻ -shm
+  db.pragma('journal_mode = DELETE');
+  db.pragma('mmap_size = 67108864'); // 64MB memory-mapped I/O
+} else {
+  // Môi trường máy chủ cố định / nội bộ: chế độ WAL tối ưu tốc độ đọc ghi đồng thời
+  db.pragma('journal_mode = WAL');
+  db.pragma('mmap_size = 268435456'); // 256MB memory-mapped I/O
+}
 db.pragma('synchronous = NORMAL');      // Cân bằng hoàn hảo giữa an toàn dữ liệu và tốc độ ghi đĩa
 db.pragma('busy_timeout = 5000');       // Cơ chế hàng đợi tự động chờ 5s, chống lỗi EBUSY/locked
 db.pragma('temp_store = MEMORY');       // Lưu bảng tạm và index tạm trên RAM
-db.pragma('mmap_size = 268435456');     // Memory-mapped I/O 256MB tăng tốc truy vấn đọc tức thì
 db.pragma('cache_size = -64000');       // Cấp phát 64MB RAM làm bộ đệm trang (Page Cache)
 db.pragma('foreign_keys = ON');
 
@@ -177,7 +219,7 @@ const insertStmt = db.prepare(`
 
 // 2. Tự động chuyển đổi dữ liệu từ surveys.json hoặc surveys.backup.json nếu Database SQLite mới khởi tạo
 const currentCount = db.prepare('SELECT COUNT(*) as count FROM surveys').get().count;
-if (currentCount === 0) {
+if (currentCount === 0 && (!isServerless || !fs.existsSync(CLEARED_MARKER))) {
   let surveysToLoad = null;
 
   if (fs.existsSync(JSON_FILE)) {
@@ -199,6 +241,20 @@ if (currentCount === 0) {
         surveysToLoad = backupExisting;
       }
     } catch (_) {}
+  }
+
+  // Fallback sang bundled backup trên serverless nếu cần
+  if ((!surveysToLoad || surveysToLoad.length === 0) && isServerless) {
+    const bundledBackup = path.join(BUNDLED_DIR, 'surveys.backup.json');
+    if (fs.existsSync(bundledBackup)) {
+      try {
+        const raw = fs.readFileSync(bundledBackup, 'utf8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          surveysToLoad = parsed;
+        }
+      } catch (_) {}
+    }
   }
 
   if (surveysToLoad && surveysToLoad.length > 0) {
@@ -306,6 +362,9 @@ const insertSurveyTx = db.transaction((s) => {
  * Thêm một phiếu khảo sát mới (Chuẩn ACID, Chống xung đột ghi đồng thời)
  */
 function insertSurvey(survey) {
+  if (isServerless && fs.existsSync(CLEARED_MARKER)) {
+    try { fs.unlinkSync(CLEARED_MARKER); } catch (_) {}
+  }
   const assignedId = insertSurveyTx(survey);
   survey.id = assignedId;
   scheduleBackupSync();
@@ -316,6 +375,9 @@ function insertSurvey(survey) {
  * Thêm hàng loạt phiếu khảo sát (Dùng Transaction siêu tốc cho Mock Data)
  */
 function insertManySurveys(surveyList) {
+  if (isServerless && fs.existsSync(CLEARED_MARKER)) {
+    try { fs.unlinkSync(CLEARED_MARKER); } catch (_) {}
+  }
   const insertManyTx = db.transaction((list) => {
     for (const s of list) {
       insertStmt.run(surveyToRow(s));
@@ -334,6 +396,11 @@ function clearAllSurveys() {
   try {
     fs.writeFileSync(JSON_FILE, '[]', 'utf8');
   } catch (_) {}
+  if (isServerless) {
+    try {
+      fs.writeFileSync(CLEARED_MARKER, '1', 'utf8');
+    } catch (_) {}
+  }
 }
 
 /**
