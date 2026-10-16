@@ -14,6 +14,7 @@ if (!fs.existsSync(DATA_DIR)) {
 
 const DB_FILE = path.join(DATA_DIR, 'surveys.db');
 const JSON_FILE = path.join(DATA_DIR, 'surveys.json');
+const BACKUP_JSON_FILE = path.join(DATA_DIR, 'surveys.backup.json');
 
 // Khởi tạo kết nối SQLite với file database
 const db = new Database(DB_FILE);
@@ -174,33 +175,83 @@ const insertStmt = db.prepare(`
   )
 `);
 
-// 2. Tự động chuyển đổi dữ liệu từ surveys.json nếu Database SQLite mới khởi tạo
+// 2. Tự động chuyển đổi dữ liệu từ surveys.json hoặc surveys.backup.json nếu Database SQLite mới khởi tạo
 const currentCount = db.prepare('SELECT COUNT(*) as count FROM surveys').get().count;
-if (currentCount === 0 && fs.existsSync(JSON_FILE)) {
-  try {
-    const raw = fs.readFileSync(JSON_FILE, 'utf8');
-    const existing = JSON.parse(raw);
-    if (Array.isArray(existing) && existing.length > 0) {
-      console.log(`[SQLite Migration] Đang tự động nạp ${existing.length} bản ghi hiện có vào surveys.db...`);
-      const insertManyTx = db.transaction((surveys) => {
-        for (const s of surveys) {
-          insertStmt.run(surveyToRow(s));
-        }
-      });
-      insertManyTx(existing);
-      console.log(`[SQLite Migration] Hoàn tất nạp ${existing.length} bản ghi sang cơ sở dữ liệu SQLite!`);
-    }
-  } catch (err) {
-    console.error('[SQLite Migration Error]:', err);
+if (currentCount === 0) {
+  let surveysToLoad = null;
+
+  if (fs.existsSync(JSON_FILE)) {
+    try {
+      const raw = fs.readFileSync(JSON_FILE, 'utf8');
+      const existing = JSON.parse(raw);
+      if (Array.isArray(existing) && existing.length > 0) {
+        surveysToLoad = existing;
+      }
+    } catch (_) {}
+  }
+
+  // Fallback sang file backup nếu surveys.json trống
+  if ((!surveysToLoad || surveysToLoad.length === 0) && fs.existsSync(BACKUP_JSON_FILE)) {
+    try {
+      const rawBackup = fs.readFileSync(BACKUP_JSON_FILE, 'utf8');
+      const backupExisting = JSON.parse(rawBackup);
+      if (Array.isArray(backupExisting) && backupExisting.length > 0) {
+        surveysToLoad = backupExisting;
+      }
+    } catch (_) {}
+  }
+
+  if (surveysToLoad && surveysToLoad.length > 0) {
+    console.log(`[SQLite Migration] Đang tự động nạp ${surveysToLoad.length} bản ghi hiện có vào surveys.db...`);
+    const insertManyTx = db.transaction((surveys) => {
+      for (const s of surveys) {
+        insertStmt.run(surveyToRow(s));
+      }
+    });
+    insertManyTx(surveysToLoad);
+    console.log(`[SQLite Migration] Hoàn tất nạp ${surveysToLoad.length} bản ghi sang cơ sở dữ liệu SQLite!`);
+    try {
+      fs.writeFileSync(JSON_FILE, JSON.stringify(surveysToLoad, null, 2), 'utf8');
+    } catch (_) {}
   }
 }
 
-// Tự động sao lưu một bản JSON dự phòng (không đồng bộ, chạy ngầm)
-function syncBackupJson() {
+// Cơ chế sao lưu JSON dự phòng bất đồng bộ với Debounce và Atomic Write chống khóa file EBUSY trên Windows
+let backupSyncTimer = null;
+let isWritingBackup = false;
+
+function scheduleBackupSync() {
+  if (backupSyncTimer) clearTimeout(backupSyncTimer);
+  backupSyncTimer = setTimeout(() => {
+    backupSyncTimer = null;
+    performBackupSync();
+  }, 1000);
+}
+
+function performBackupSync() {
+  if (isWritingBackup) {
+    scheduleBackupSync();
+    return;
+  }
+  isWritingBackup = true;
   try {
     const all = getAllSurveys();
-    fs.writeFile(JSON_FILE, JSON.stringify(all, null, 2), () => {});
-  } catch (_) {}
+    const jsonStr = JSON.stringify(all, null, 2);
+    const tempFile = `${JSON_FILE}.tmp`;
+    fs.writeFile(tempFile, jsonStr, 'utf8', (err) => {
+      isWritingBackup = false;
+      if (!err) {
+        try {
+          fs.renameSync(tempFile, JSON_FILE);
+        } catch (_) {
+          fs.writeFile(JSON_FILE, jsonStr, () => {});
+        }
+      }
+    });
+  } catch (err) {
+    isWritingBackup = false;
+    console.warn('[Backup Sync Warning]:', err.message);
+  }
 }
 
 // API Functions giao tiếp với Database
@@ -230,21 +281,34 @@ function getSurveyCount() {
  * Tạo ID tuần tự nguyên tử tiếp theo (NV-0001, NV-0002, ...)
  */
 function generateNextSurveyId() {
-  // Lấy giá trị số lớn nhất của id dạng NV-xxxx
   const row = db.prepare(`
-    SELECT MAX(CAST(SUBSTR(id, 4) AS INTEGER)) as maxId FROM surveys WHERE id LIKE 'NV-%'
+    SELECT COALESCE(MAX(CAST(SUBSTR(id, 4) AS INTEGER)), 0) as maxId FROM surveys WHERE id LIKE 'NV-%'
   `).get();
   const nextNum = (row && row.maxId ? row.maxId : 0) + 1;
   return `NV-${String(nextNum).padStart(4, '0')}`;
 }
 
+// Transaction cấp phát ID và ghi dữ liệu nguyên tử (Atomic & Concurrency-Safe)
+const insertSurveyTx = db.transaction((s) => {
+  if (!s.id || s.id.startsWith('NV-') || s.id === 'auto') {
+    const row = db.prepare(`
+      SELECT COALESCE(MAX(CAST(SUBSTR(id, 4) AS INTEGER)), 0) as maxId FROM surveys WHERE id LIKE 'NV-%'
+    `).get();
+    const nextNum = (row && row.maxId ? row.maxId : 0) + 1;
+    s.id = `NV-${String(nextNum).padStart(4, '0')}`;
+  }
+  const row = surveyToRow(s);
+  insertStmt.run(row);
+  return s.id;
+});
+
 /**
- * Thêm một phiếu khảo sát mới (Chuẩn ACID)
+ * Thêm một phiếu khảo sát mới (Chuẩn ACID, Chống xung đột ghi đồng thời)
  */
 function insertSurvey(survey) {
-  const row = surveyToRow(survey);
-  insertStmt.run(row);
-  syncBackupJson();
+  const assignedId = insertSurveyTx(survey);
+  survey.id = assignedId;
+  scheduleBackupSync();
   return survey;
 }
 
@@ -258,7 +322,7 @@ function insertManySurveys(surveyList) {
     }
   });
   insertManyTx(surveyList);
-  syncBackupJson();
+  scheduleBackupSync();
 }
 
 /**
@@ -266,7 +330,10 @@ function insertManySurveys(surveyList) {
  */
 function clearAllSurveys() {
   db.prepare('DELETE FROM surveys').run();
-  syncBackupJson();
+  if (backupSyncTimer) clearTimeout(backupSyncTimer);
+  try {
+    fs.writeFileSync(JSON_FILE, '[]', 'utf8');
+  } catch (_) {}
 }
 
 /**

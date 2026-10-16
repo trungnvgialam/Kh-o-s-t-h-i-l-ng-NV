@@ -105,7 +105,7 @@ app.get('/api/config', (req, res) => {
     localIps,
     networkUrl: `http://${primaryIp}:${PORT}`,
     localUrl: `http://localhost:${PORT}`,
-    tunnelUrl: 'https://violation-flush-wma-bikini.trycloudflare.com',
+    tunnelUrl: process.env.TUNNEL_URL || 'https://violation-flush-wma-bikini.trycloudflare.com',
     engine: 'SQLite WAL Mode (Enterprise ACID)'
   });
 });
@@ -161,9 +161,6 @@ app.post('/api/submit', (req, res) => {
       return res.status(400).json({ success: false, message: 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin.' });
     }
 
-    // Atomic monotonic ID generation from SQLite
-    const newId = db.generateNextSurveyId();
-
     // Clean & validate Likert answers (1 to 5)
     const sanitizedAnswers = {};
     if (typeof body.answers === 'object') {
@@ -178,11 +175,11 @@ app.post('/api/submit', (req, res) => {
     const overallScore = Math.max(1, Math.min(10, parseInt(body.overall?.score, 10) || 8));
     const enpsScore = Math.max(0, Math.min(10, parseInt(body.overall?.enps, 10) || 8));
     const rawSuggestions = String(body.overall?.suggestions || '').trim();
-    // Strip HTML/script tags to prevent XSS
-    const cleanSuggestions = rawSuggestions.replace(/<[^>]*>?/gm, '').slice(0, 2000);
+    // Trim & sanitize text length without breaking valid medical inequality symbols like < 5 or > 10
+    const cleanSuggestions = rawSuggestions.slice(0, 2000);
 
     const submission = {
-      id: newId,
+      // ID will be atomically assigned inside SQLite transaction in db.insertSurvey
       submittedAt: new Date().toISOString(),
       demographics: {
         department: String(body.demographics?.department || 'other'),
@@ -200,12 +197,12 @@ app.post('/api/submit', (req, res) => {
       }
     };
 
-    // Lưu trực tiếp vào SQLite chuẩn ACID (WAL mode, non-blocking)
-    db.insertSurvey(submission);
+    // Lưu trực tiếp vào SQLite chuẩn ACID (WAL mode, non-blocking, atomic sequential ID)
+    const saved = db.insertSurvey(submission);
 
     res.json({
       success: true,
-      id: newId,
+      id: saved.id,
       message: 'Gửi phiếu khảo sát thành công. Chân thành cảm ơn sự đóng góp quý báu của bạn!'
     });
   } catch (err) {
@@ -223,16 +220,40 @@ function computeStatistics(surveys, filterDept = 'all') {
 
   const total = list.length;
   if (total === 0) {
+    const allQuestions = [];
+    SURVEY_CONFIG.groups.forEach(g => {
+      g.questions.forEach(q => {
+        allQuestions.push({
+          ...q,
+          groupId: g.id,
+          groupCode: g.code,
+          groupName: g.name,
+          meanScore: 0,
+          csi: 0,
+          distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+        });
+      });
+    });
+
+    const groupScores = SURVEY_CONFIG.groups.map(g => ({
+      id: g.id,
+      code: g.code,
+      name: g.name,
+      meanScore: 0,
+      csi: 0,
+      questionCount: g.questions.length
+    }));
+
     return {
       totalCount: 0,
       target: SURVEY_CONFIG.targetRespondents,
       completionRate: 0,
       csi: 0,
       overallMean: 0,
-      enps: { score: 0, promoters: 0, passives: 0, detractors: 0 },
+      enps: { score: 0, promoters: 0, passives: 0, detractors: 0, promoterPct: 0, detractorPct: 0 },
       commitment: {},
-      groupScores: [],
-      questionScores: [],
+      groupScores,
+      questionScores: allQuestions,
       topStrengths: [],
       topConcerns: [],
       byDepartment: {},
@@ -450,25 +471,81 @@ app.get('/api/responses', requireAdmin, (req, res) => {
   res.json(result);
 });
 
+const DEPT_LABELS = {
+  noi: 'Khối Lâm sàng Nội',
+  ngoai: 'Khối Lâm sàng Ngoại',
+  capcuu: 'Khối Khám bệnh & Cấp cứu',
+  canlamsang: 'Khối Cận lâm sàng & Dược',
+  hanhchinh: 'Khối Phòng ban chức năng',
+  other: 'Khác'
+};
+
+const ROLE_LABELS = {
+  bacsi: 'Bác sĩ / Bác sĩ CKI-CKII',
+  dieuduong: 'Điều dưỡng / Hộ sinh',
+  kythuatvien: 'Kỹ thuật viên y tế',
+  duocsi: 'Dược sĩ',
+  quanly_hanhchinh: 'Cán bộ QL / Hành chính',
+  hotro: 'Hộ lý / Y công / Hỗ trợ',
+  other: 'Khác'
+};
+
+const EXP_LABELS = {
+  duoi2: 'Dưới 2 năm',
+  tu2den5: 'Từ 2 đến 5 năm',
+  tu5den10: 'Từ 5 đến 10 năm',
+  tren10: 'Trên 10 năm',
+  other: 'Khác'
+};
+
+const GENDER_LABELS = {
+  nam: 'Nam',
+  nu: 'Nữ',
+  khac: 'Không nêu'
+};
+
+const DEGREE_LABELS = {
+  trungcap_caodang: 'Trung cấp / Cao đẳng',
+  daihoc: 'Đại học',
+  saudaihoc: 'Sau đại học (ThS, CKI, CKII, TS)',
+  other: 'Khác'
+};
+
+const COMMITMENT_LABELS = {
+  chac_chan: 'Chắc chắn gắn bó lâu dài',
+  co_the: 'Có thể gắn bó',
+  phan_van: 'Đang phân vân',
+  du_dinh_chuyen: 'Dự định chuyển nơi khác',
+  unknown: 'Chưa xác định'
+};
+
 // API: Export Excel (Admin only)
 app.get('/api/export-excel', requireAdmin, (req, res) => {
   try {
-    const surveys = readSurveys();
+    const deptFilter = req.query.department || 'all';
+    let surveys = readSurveys();
+    const isFiltered = deptFilter && deptFilter !== 'all';
+    if (isFiltered) {
+      surveys = surveys.filter(s => s.demographics?.department === deptFilter);
+    }
     const stats = computeStatistics(surveys);
 
     const wb = XLSX.utils.book_new();
 
+    const scopeText = isFiltered ? `Phạm vi báo cáo: ${DEPT_LABELS[deptFilter] || deptFilter}` : 'Phạm vi báo cáo: Toàn bệnh viện';
+
     // 1. Sheet: Báo cáo Tổng hợp (Summary)
     const summaryData = [
       ['BÁO CÁO KẾT QUẢ KHẢO SÁT SỰ HÀI LÒNG NHÂN VIÊN Y TẾ'],
-      ['Căn cứ theo Bộ tiêu chí chất lượng bệnh viện - Bộ Y tế Việt Nam'],
+      ['Căn cứ theo Bộ tiêu chí chất lượng bệnh viện - Bộ Y tế Việt Nam (QĐ 6858/QĐ-BYT)'],
+      [scopeText],
       ['Thời gian xuất báo cáo:', new Date().toLocaleString('vi-VN')],
       [''],
       ['CHỈ SỐ TỔNG QUAN', 'GIÁ TRỊ', 'MỤC TIÊU / ĐÁNH GIÁ'],
       ['Tổng số nhân viên tham gia khảo sát', stats.totalCount, `Mục tiêu: ${stats.target} NV (Đạt ${stats.completionRate}%)`],
-      ['Chỉ số Hài lòng Chung (CSI %)', `${stats.csi}%`, stats.csi >= 85 ? 'Rất tốt (Xuất sắc)' : stats.csi >= 75 ? 'Khá' : 'Cần cải thiện'],
+      ['Chỉ số Hài lòng Chung (CSI %)', `${stats.csi}%`, stats.csi >= 85 ? 'Rất tốt (Xuất sắc)' : stats.csi >= 75 ? 'Khá / Tốt' : 'Cần cải thiện'],
       ['Điểm hài lòng chung bình quân (1-10)', stats.overallMean, 'Thang điểm 10'],
-      ['Chỉ số cam kết & gắn kết (eNPS)', stats.enps.score, `Promoters: ${stats.enps.promoterPct}%, Detractors: ${stats.enps.detractorPct}%`],
+      ['Chỉ số cam kết & gắn kết (eNPS)', stats.enps.score, `Promoters: ${stats.enps.promoterPct || 0}%, Detractors: ${stats.enps.detractorPct || 0}%`],
       [''],
       ['ĐIỂM TRUNG BÌNH THEO 5 NHÓM TIÊU CHÍ BỘ Y TẾ', 'ĐIỂM (1-5)', 'TỶ LỆ HÀI LÒNG (CSI)'],
       ...stats.groupScores.map(g => [g.code + '. ' + g.name, g.meanScore, `${g.csi}%`]),
@@ -515,40 +592,46 @@ app.get('/api/export-excel', requireAdmin, (req, res) => {
     const rawRows = surveys.map(s => [
       s.id,
       new Date(s.submittedAt).toLocaleString('vi-VN'),
-      s.demographics?.department || '',
-      s.demographics?.role || '',
-      s.demographics?.experience || '',
-      s.demographics?.gender || '',
-      s.demographics?.degree || '',
+      DEPT_LABELS[s.demographics?.department] || s.demographics?.department || '',
+      ROLE_LABELS[s.demographics?.role] || s.demographics?.role || '',
+      EXP_LABELS[s.demographics?.experience] || s.demographics?.experience || '',
+      GENDER_LABELS[s.demographics?.gender] || s.demographics?.gender || '',
+      DEGREE_LABELS[s.demographics?.degree] || s.demographics?.degree || '',
       s.answers?.a1 || '', s.answers?.a2 || '', s.answers?.a3 || '', s.answers?.a4 || '', s.answers?.a5 || '',
       s.answers?.b1 || '', s.answers?.b2 || '', s.answers?.b3 || '', s.answers?.b4 || '', s.answers?.b5 || '',
       s.answers?.c1 || '', s.answers?.c2 || '', s.answers?.c3 || '', s.answers?.c4 || '', s.answers?.c5 || '',
       s.answers?.d1 || '', s.answers?.d2 || '', s.answers?.d3 || '', s.answers?.d4 || '',
       s.answers?.e1 || '', s.answers?.e2 || '', s.answers?.e3 || '', s.answers?.e4 || '',
       s.overall?.score || '',
-      s.overall?.commitment || '',
-      s.overall?.enps || '',
+      COMMITMENT_LABELS[s.overall?.commitment] || s.overall?.commitment || '',
+      s.overall?.enps ?? '',
       s.overall?.suggestions || ''
     ]);
     const wsRaw = XLSX.utils.aoa_to_sheet([rawHeaders, ...rawRows]);
     wsRaw['!cols'] = [
-      { wch: 12 }, { wch: 20 }, { wch: 25 }, { wch: 25 }, { wch: 16 }, { wch: 12 }, { wch: 20 },
+      { wch: 12 }, { wch: 20 }, { wch: 28 }, { wch: 28 }, { wch: 18 }, { wch: 12 }, { wch: 28 },
       ...Array(23).fill({ wch: 6 }),
-      { wch: 18 }, { wch: 24 }, { wch: 16 }, { wch: 65 }
+      { wch: 18 }, { wch: 28 }, { wch: 16 }, { wch: 65 }
     ];
-    XLSX.utils.book_append_sheet(wb, wsRaw, 'Dữ liệu 500 Khảo sát');
+    XLSX.utils.book_append_sheet(wb, wsRaw, `Dữ liệu (${surveys.length} Khảo sát)`);
 
     // 4. Sheet: Ý kiến đóng góp
-    const sugHeaders = ['Mã phiếu', 'Khối công tác', 'Chức danh', 'Thâm niên', 'Điểm chung', 'Ý kiến đóng góp / Nguyện vọng'];
+    const sugHeaders = ['Mã phiếu', 'Khối công tác', 'Chức danh', 'Thâm niên', 'Điểm chung (1-10)', 'Ý kiến đóng góp / Nguyện vọng'];
     const sugRows = stats.suggestions.map(s => [
-      s.id, s.department, s.role, s.experience, s.score, s.text
+      s.id, 
+      DEPT_LABELS[s.department] || s.department, 
+      ROLE_LABELS[s.role] || s.role, 
+      EXP_LABELS[s.experience] || s.experience, 
+      s.score, 
+      s.text
     ]);
     const wsSug = XLSX.utils.aoa_to_sheet([sugHeaders, ...sugRows]);
-    wsSug['!cols'] = [{ wch: 12 }, { wch: 25 }, { wch: 25 }, { wch: 16 }, { wch: 12 }, { wch: 80 }];
+    wsSug['!cols'] = [{ wch: 12 }, { wch: 28 }, { wch: 28 }, { wch: 18 }, { wch: 18 }, { wch: 80 }];
     XLSX.utils.book_append_sheet(wb, wsSug, 'Ý kiến Hiến kế');
 
     const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-    const filename = `Bao_Cao_Khao_Sat_Hai_Long_NVYT_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    const fileSuffix = isFiltered ? `_${deptFilter}` : '';
+    const filename = `Bao_Cao_Khao_Sat_Hai_Long_NVYT${fileSuffix}_${new Date().toISOString().slice(0, 10)}.xlsx`;
 
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
