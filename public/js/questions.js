@@ -178,7 +178,7 @@ const SURVEY_CONFIG = {
       ]
     },
     {
-      id: "enps_recommend",
+      id: "enps",
       label: "Mức độ sẵn lòng giới thiệu Bệnh viện là nơi làm việc tốt cho đồng nghiệp / người thân trong ngành y",
       desc: "Chấm điểm từ 0 (Hoàn toàn không muốn giới thiệu) đến 10 (Chắc chắn sẽ nhiệt tình giới thiệu)",
       type: "scale10",
