@@ -115,7 +115,7 @@ app.get('/api/config', (req, res) => {
     networkUrl: `http://${primaryIp}:${PORT}`,
     localUrl: `http://localhost:${PORT}`,
     tunnelUrl: process.env.TUNNEL_URL || 'https://violation-flush-wma-bikini.trycloudflare.com',
-    engine: 'SQLite WAL Mode (Enterprise ACID)'
+    engine: isServerless ? 'SQLite Serverless (/tmp)' : 'SQLite WAL Mode (Enterprise ACID)'
   });
 });
 
@@ -216,7 +216,7 @@ app.post('/api/submit', (req, res) => {
     });
   } catch (err) {
     console.error('Error submitting survey:', err);
-    res.status(500).json({ success: false, message: 'Lỗi máy chủ khi lưu phản hồi.' });
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ khi lưu phản hồi.', error: err.message });
   }
 });
 
@@ -833,7 +833,7 @@ app.post('/api/mock-data', requireAdmin, (req, res) => {
     });
   } catch (err) {
     console.error('Error generating mock data:', err);
-    res.status(500).json({ success: false, message: 'Lỗi khi tạo dữ liệu mẫu.' });
+    res.status(500).json({ success: false, message: 'Lỗi khi tạo dữ liệu mẫu.', error: err.message });
   }
 });
 
