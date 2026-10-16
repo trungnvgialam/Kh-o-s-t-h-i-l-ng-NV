@@ -523,6 +523,10 @@ body {
   margin: 12px 0 8px;
 }
 
+#scale-overall-score {
+  grid-template-columns: repeat(10, 1fr);
+}
+
 .scale-btn {
   display: flex;
   align-items: center;
@@ -774,6 +778,10 @@ body {
     grid-template-columns: repeat(6, 1fr);
   }
 
+  #scale-overall-score {
+    grid-template-columns: repeat(5, 1fr);
+  }
+
   .bottom-bar {
     padding: 10px 14px;
   }
@@ -785,6 +793,7 @@ body {
 }
 
 /* ERROR VALIDATION STYLES */
+.question-card.unanswered-error,
 .q-card.unanswered-error,
 .form-group.unanswered-error {
   border: 2px solid #ef4444 !important;

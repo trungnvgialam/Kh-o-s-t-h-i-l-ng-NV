@@ -51,15 +51,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.warn('Lỗi kiểm tra phiên xác thực:', err);
   }
 
-  // Bind token to Excel export link
-  const exportBtn = document.getElementById('btn-export-excel');
-  if (exportBtn) {
-    exportBtn.href = `/api/export-excel?token=${encodeURIComponent(token)}`;
-  }
+  // Bind token and filter to Excel export link
+  updateExportExcelLink();
 
   initDashboard();
   setupEventListeners();
 });
+
+function updateExportExcelLink() {
+  const exportBtn = document.getElementById('btn-export-excel');
+  if (exportBtn) {
+    const token = getAdminToken();
+    const dept = document.getElementById('filter-department')?.value || 'all';
+    exportBtn.href = `/api/export-excel?department=${encodeURIComponent(dept)}&token=${encodeURIComponent(token)}`;
+  }
+}
 
 async function initDashboard() {
   await loadSystemConfig();
@@ -513,7 +519,8 @@ function updateFeedbackWall(suggestions) {
     dieuduong: 'Điều dưỡng',
     kythuatvien: 'Kỹ thuật viên',
     duocsi: 'Dược sĩ',
-    quanly_hanhchinh: 'Hành chính'
+    quanly_hanhchinh: 'Hành chính',
+    hotro: 'Hộ lý / Y công'
   };
   const deptNames = {
     noi: 'Khoa Nội',
@@ -561,7 +568,7 @@ async function loadResponsesTable(page = 1) {
       if (data.items.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">Không tìm thấy bản ghi khảo sát nào.</td></tr>';
       } else {
-        const roleMap = { bacsi: 'Bác sĩ', dieuduong: 'Điều dưỡng', kythuatvien: 'KTV', duocsi: 'Dược sĩ', quanly_hanhchinh: 'Hành chính' };
+        const roleMap = { bacsi: 'Bác sĩ', dieuduong: 'Điều dưỡng', kythuatvien: 'KTV', duocsi: 'Dược sĩ', quanly_hanhchinh: 'Hành chính', hotro: 'Hộ lý / Y công' };
         const deptMap = { noi: 'Lâm sàng Nội', ngoai: 'Lâm sàng Ngoại', capcuu: 'Khám bệnh - Cấp cứu', canlamsang: 'Cận lâm sàng', hanhchinh: 'Hành chính' };
 
         tbody.innerHTML = data.items.map(item => `
@@ -599,6 +606,7 @@ async function loadResponsesTable(page = 1) {
 function setupEventListeners() {
   // Department filter change
   document.getElementById('filter-department')?.addEventListener('change', () => {
+    updateExportExcelLink();
     loadDashboardStats();
     loadResponsesTable(1);
   });
@@ -752,6 +760,10 @@ function setupEventListeners() {
 
   // Print QR poster
   document.getElementById('btn-print-qr')?.addEventListener('click', () => {
+    document.body.classList.add('printing-qr');
     window.print();
+    window.addEventListener('afterprint', () => {
+      document.body.classList.remove('printing-qr');
+    }, { once: true });
   });
 }
