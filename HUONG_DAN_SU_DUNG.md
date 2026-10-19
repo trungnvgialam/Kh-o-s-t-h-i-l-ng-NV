@@ -238,6 +238,22 @@ Tại thanh công cụ lọc:
 
 ---
 
+### 5.10 Tùy Chỉnh Số Lượng Nhân Viên Y Tế Mục Tiêu (Quy Mô Linh Hoạt)
+
+Mỗi bệnh viện hoặc cơ sở y tế có quy mô nhân sự khác nhau (ví dụ: 100 NV, 200 NV, 350 NV, 700 NV hay 1.500 NV). Quản trị viên có thể tùy biến số lượng này bất kỳ lúc nào:
+1. Trên thanh biểu ngữ **"Tiến Độ Thu Thập Phiếu Khảo Sát"**, bấm vào nút **"⚙️ Đổi mục tiêu"** (bên cạnh tiêu đề).
+2. Hộp thoại mở ra:
+   - Nhập số lượng nhân sự mong muốn (hoặc bấm chọn nhanh các nút gợi ý: `100 NV`, `200 NV`, `350 NV`, `500 NV`, `700 NV`, `1.000 NV`...).
+   - Bấm **"💾 Lưu Mục Tiêu Mới"**.
+3. **Toàn bộ hệ thống sẽ tự động cập nhật ngay lập tức:**
+   - Thanh tiến độ % hoàn thành tự động tính lại theo quy mô mới.
+   - Thẻ chỉ số KPI 1 (`Số phiếu đã nộp / Mục tiêu mới`) tự động cập nhật.
+   - Báo cáo xuất Excel (`.xlsx`) tự động đồng bộ con số mục tiêu mới.
+   - Dữ liệu được lưu vĩnh viễn trên máy chủ, không bị mất khi khởi động lại máy tính.
+
+---
+
+
 
 ## 6. CƠ CHẾ LƯU TRỮ & AN TOÀN DỮ LIỆU (SQLITE ENTERPRISE WAL ENGINE)
 

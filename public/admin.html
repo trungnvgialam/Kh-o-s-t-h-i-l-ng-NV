@@ -25,7 +25,7 @@
       <div class="brand-icon">🏥</div>
       <div class="brand-text">
         <h1>Báo Cáo Sự Hài Lòng Nhân Viên Y Tế</h1>
-        <p>Quy mô: 500 Cán bộ y tế • Tiêu chí chất lượng Bệnh viện - Bộ Y tế</p>
+        <p>Quy mô: <span id="brand-target-label">500</span> Cán bộ y tế • Tiêu chí chất lượng Bệnh viện - Bộ Y tế</p>
       </div>
     </div>
 
@@ -63,7 +63,12 @@
     <!-- TARGET PROGRESS BANNER -->
     <section class="progress-target-card">
       <div class="target-info">
-        <h2>Tiến Độ Thu Thập Phiếu Khảo Sát (Mục tiêu: 500 Nhân viên y tế)</h2>
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
+          <h2 id="target-title-text" style="margin: 0;">Tiến Độ Thu Thập Phiếu Khảo Sát (Mục tiêu: 500 NV)</h2>
+          <button type="button" class="btn-outline" id="btn-edit-target" style="padding: 3px 8px; font-size: 11.5px; border-color: #38bdf8; color: #0284c7; background: #f0f9ff; cursor: pointer; border-radius: 6px; font-weight: 600;" title="Nhấp để tùy chỉnh số lượng nhân viên y tế mục tiêu">
+            ⚙️ Đổi mục tiêu
+          </button>
+        </div>
         <p>Dữ liệu được cập nhật tự động khi có nhân viên y tế nộp phiếu qua điện thoại hoặc máy tính</p>
       </div>
       <div class="target-bar-wrap">
@@ -139,7 +144,7 @@
         </div>
         <div class="kpi-value-row">
           <span class="kpi-value" id="kpi-total-responses">0</span>
-          <span class="kpi-unit">/ 500 NV</span>
+          <span class="kpi-unit" id="kpi-target-unit">/ 500 NV</span>
         </div>
         <p class="kpi-desc">Tổng số cán bộ nhân viên đã hoàn thành phiếu khảo sát</p>
       </div>
@@ -477,6 +482,56 @@
       </div>
     </div>
   </div>
+
+  <!-- TARGET RESPONDENTS CUSTOM MODAL -->
+  <div class="modal-overlay" id="target-modal">
+    <div class="modal-content" style="max-width: 440px;">
+      <button class="modal-close-btn" id="btn-close-target" title="Đóng">✕</button>
+      
+      <div style="text-align: left;">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">
+          <span style="font-size: 24px;">⚙️</span>
+          <div>
+            <h3 style="margin: 0; font-size: 16px; color: #0f766e; font-weight: 700;">Tùy Chỉnh Mục Tiêu Quy Mô</h3>
+            <p style="margin: 2px 0 0; font-size: 12px; color: #64748b;">Tổng số lượng cán bộ nhân viên y tế toàn viện</p>
+          </div>
+        </div>
+
+        <div id="target-alert-box" style="display: none; padding: 8px 12px; border-radius: 6px; font-size: 12.5px; margin-bottom: 12px;"></div>
+
+        <div style="margin-bottom: 14px;">
+          <label style="display: block; font-size: 13px; font-weight: 700; color: #334155; margin-bottom: 6px;">
+            🎯 Số lượng nhân sự mục tiêu (NV):
+          </label>
+          <input type="number" id="target-input" class="form-input" style="width: 100%; box-sizing: border-box; font-size: 16px; font-weight: 700; color: #0f766e; padding: 8px 12px; border-radius: 6px; border: 1.5px solid #cbd5e1;" min="1" max="1000000" placeholder="Ví dụ: 350, 500, 1000..." />
+        </div>
+
+        <!-- Gợi ý chọn nhanh quy mô -->
+        <div style="margin-bottom: 16px;">
+          <span style="font-size: 12px; color: #64748b; font-weight: 600;">Gợi ý chọn nhanh quy mô:</span>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;">
+            <button type="button" class="btn-outline target-preset-btn" data-val="100" style="padding: 3px 8px; font-size: 12px;">100 NV</button>
+            <button type="button" class="btn-outline target-preset-btn" data-val="200" style="padding: 3px 8px; font-size: 12px;">200 NV</button>
+            <button type="button" class="btn-outline target-preset-btn" data-val="350" style="padding: 3px 8px; font-size: 12px;">350 NV</button>
+            <button type="button" class="btn-outline target-preset-btn" data-val="500" style="padding: 3px 8px; font-size: 12px;">500 NV</button>
+            <button type="button" class="btn-outline target-preset-btn" data-val="700" style="padding: 3px 8px; font-size: 12px;">700 NV</button>
+            <button type="button" class="btn-outline target-preset-btn" data-val="1000" style="padding: 3px 8px; font-size: 12px;">1.000 NV</button>
+            <button type="button" class="btn-outline target-preset-btn" data-val="1500" style="padding: 3px 8px; font-size: 12px;">1.500 NV</button>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+          <button type="button" class="btn-outline" id="btn-cancel-target" style="padding: 7px 14px; font-size: 13px;">
+            Hủy
+          </button>
+          <button type="button" class="btn-action-primary" id="btn-save-target" style="padding: 7px 16px; font-size: 13px;">
+            💾 Lưu Mục Tiêu Mới
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 
 
   <script src="vendor/chart.umd.min.js"></script>

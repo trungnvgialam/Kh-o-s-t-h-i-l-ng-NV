@@ -9,6 +9,7 @@ const XLSX = require('xlsx');
 const SURVEY_CONFIG = require('./questions');
 const db = require('./db');
 const googleSheetSync = require('./googleSheetSync');
+const settingsManager = require('./settingsManager');
 
 const isServerless = Boolean(
   process.env.VERCEL === '1' ||
@@ -114,7 +115,7 @@ app.get('/api/config', (req, res) => {
   res.json({
     config: SURVEY_CONFIG,
     totalCount: db.getSurveyCount(),
-    target: SURVEY_CONFIG.targetRespondents,
+    target: settingsManager.getTargetRespondents(),
     localIps,
     networkUrl: isServerless ? currentOrigin : `http://${primaryIp}:${PORT}`,
     localUrl: isServerless ? currentOrigin : `http://localhost:${PORT}`,
@@ -240,6 +241,8 @@ function computeStatistics(surveys, filterDept = 'all') {
   }
 
   const total = list.length;
+  const currentTarget = settingsManager.getTargetRespondents();
+
   if (total === 0) {
     const allQuestions = [];
     SURVEY_CONFIG.groups.forEach(g => {
@@ -267,7 +270,7 @@ function computeStatistics(surveys, filterDept = 'all') {
 
     return {
       totalCount: 0,
-      target: SURVEY_CONFIG.targetRespondents,
+      target: currentTarget,
       completionRate: 0,
       csi: 0,
       overallMean: 0,
@@ -449,8 +452,8 @@ function computeStatistics(surveys, filterDept = 'all') {
 
   return {
     totalCount: total,
-    target: SURVEY_CONFIG.targetRespondents,
-    completionRate: Number(((total / SURVEY_CONFIG.targetRespondents) * 100).toFixed(1)),
+    target: currentTarget,
+    completionRate: Number(((total / currentTarget) * 100).toFixed(1)),
     csi: overallCsi,
     overallMean,
     enps: {
@@ -749,6 +752,21 @@ app.post('/api/admin/sync-google-sheet', requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('Google Sheet Sync All Error:', err);
     res.status(500).json({ success: false, message: err.message || 'Lỗi khi đồng bộ sang Google Sheet.' });
+  }
+});
+
+// API: Cập nhật mục tiêu quy mô nhân viên y tế (Admin only)
+app.post('/api/admin/target-config', requireAdmin, (req, res) => {
+  try {
+    const { target } = req.body || {};
+    const updatedTarget = settingsManager.setTargetRespondents(target);
+    res.json({
+      success: true,
+      target: updatedTarget,
+      message: `Đã cập nhật mục tiêu quy mô thành công: ${updatedTarget} nhân viên y tế!`
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
   }
 });
 

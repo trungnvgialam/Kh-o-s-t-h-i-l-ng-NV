@@ -302,6 +302,16 @@ function updateKpiCards(stats) {
   if (countLabel) countLabel.innerText = `${currentCount} / ${targetTotal} Phiếu`;
   if (pctLabel) pctLabel.innerText = `${pct}% Mục tiêu`;
 
+  // Cập nhật nhãn quy mô trên toàn giao diện
+  const brandTarget = document.getElementById('brand-target-label');
+  if (brandTarget) brandTarget.innerText = targetTotal;
+
+  const targetTitle = document.getElementById('target-title-text');
+  if (targetTitle) targetTitle.innerText = `Tiến Độ Thu Thập Phiếu Khảo Sát (Mục tiêu: ${targetTotal} NV)`;
+
+  const kpiTargetUnit = document.getElementById('kpi-target-unit');
+  if (kpiTargetUnit) kpiTargetUnit.innerText = `/ ${targetTotal} NV`;
+
   // KPI 1: Total
   const kpiTotal = document.getElementById('kpi-total-responses');
   if (kpiTotal) kpiTotal.innerText = currentCount;
@@ -893,7 +903,98 @@ function setupEventListeners() {
   // GOOGLE SHEETS CLOUD SYNC CONTROLLER
   // ==========================================
   setupGoogleSheetSyncEvents();
+
+  // ==========================================
+  // TARGET RESPONDENTS CUSTOM CONTROLLER
+  // ==========================================
+  setupTargetModalEvents();
 }
+
+function setupTargetModalEvents() {
+  const targetModal = document.getElementById('target-modal');
+  const btnEditTarget = document.getElementById('btn-edit-target');
+  const btnCloseTarget = document.getElementById('btn-close-target');
+  const btnCancelTarget = document.getElementById('btn-cancel-target');
+  const btnSaveTarget = document.getElementById('btn-save-target');
+  const targetInput = document.getElementById('target-input');
+  const targetAlert = document.getElementById('target-alert-box');
+
+  function showTargetAlert(msg, isSuccess = true) {
+    if (!targetAlert) return;
+    targetAlert.style.display = 'block';
+    targetAlert.style.background = isSuccess ? '#ecfdf5' : '#fef2f2';
+    targetAlert.style.color = isSuccess ? '#065f46' : '#991b1b';
+    targetAlert.style.border = isSuccess ? '1px solid #a7f3d0' : '1px solid #fecaca';
+    targetAlert.innerHTML = (isSuccess ? '✅ ' : '⚠️ ') + msg;
+  }
+
+  function hideTargetAlert() {
+    if (targetAlert) targetAlert.style.display = 'none';
+  }
+
+  btnEditTarget?.addEventListener('click', () => {
+    hideTargetAlert();
+    if (targetInput && systemConfig) {
+      targetInput.value = systemConfig.target || 500;
+    }
+    if (targetModal) targetModal.classList.add('active');
+  });
+
+  btnCloseTarget?.addEventListener('click', () => {
+    if (targetModal) targetModal.classList.remove('active');
+  });
+
+  btnCancelTarget?.addEventListener('click', () => {
+    if (targetModal) targetModal.classList.remove('active');
+  });
+
+  targetModal?.addEventListener('click', (e) => {
+    if (e.target === targetModal) targetModal.classList.remove('active');
+  });
+
+  // Preset buttons
+  document.querySelectorAll('.target-preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const val = btn.getAttribute('data-val');
+      if (targetInput) targetInput.value = val;
+    });
+  });
+
+  btnSaveTarget?.addEventListener('click', async () => {
+    const val = parseInt(targetInput?.value, 10);
+    if (isNaN(val) || val <= 0) {
+      showTargetAlert('Vui lòng nhập số lượng nhân viên hợp lệ (lớn hơn 0).', false);
+      return;
+    }
+
+    btnSaveTarget.disabled = true;
+    btnSaveTarget.innerText = 'Đang lưu...';
+    try {
+      const res = await fetch('/api/admin/target-config', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ target: val })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showTargetAlert(data.message, true);
+        if (systemConfig) systemConfig.target = data.target;
+        setTimeout(() => {
+          if (targetModal) targetModal.classList.remove('active');
+          loadDashboardStats();
+        }, 800);
+      } else {
+        showTargetAlert(data.message || 'Lỗi khi lưu mục tiêu.', false);
+      }
+    } catch (err) {
+      showTargetAlert('Lỗi kết nối khi lưu: ' + err.message, false);
+    } finally {
+      btnSaveTarget.disabled = false;
+      btnSaveTarget.innerText = '💾 Lưu Mục Tiêu Mới';
+    }
+  });
+}
+
 
 function setupGoogleSheetSyncEvents() {
   const gsheetModal = document.getElementById('gsheet-modal');

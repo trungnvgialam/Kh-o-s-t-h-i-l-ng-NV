@@ -18,43 +18,16 @@ const isServerless = Boolean(
 const DATA_DIR = isServerless ? path.join(os.tmpdir(), 'khao-sat-data') : path.join(__dirname, 'data');
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 
-// Đọc cài đặt URL Webhook
-function getSettings() {
-  try {
-    if (fs.existsSync(SETTINGS_FILE)) {
-      const raw = fs.readFileSync(SETTINGS_FILE, 'utf8');
-      return JSON.parse(raw);
-    }
-  } catch (_) {}
-  return {};
-}
-
-function saveSettings(settings) {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf8');
-    return true;
-  } catch (err) {
-    console.error('Lỗi lưu cài đặt:', err);
-    return false;
-  }
-}
+const settingsManager = require('./settingsManager');
 
 function getWebhookUrl() {
-  const envUrl = process.env.GOOGLE_SHEET_WEBHOOK_URL;
-  if (envUrl && envUrl.trim()) return envUrl.trim();
-  const settings = getSettings();
-  return (settings.googleSheetWebhookUrl || '').trim();
+  return settingsManager.getGoogleSheetWebhookUrl();
 }
 
 function setWebhookUrl(url) {
-  const settings = getSettings();
-  settings.googleSheetWebhookUrl = (url || '').trim();
-  settings.updatedAt = new Date().toISOString();
-  return saveSettings(settings);
+  return settingsManager.setGoogleSheetWebhookUrl(url);
 }
+
 
 // Bảng ánh xạ tiếng Việt chuẩn
 const DEPT_LABELS = {
