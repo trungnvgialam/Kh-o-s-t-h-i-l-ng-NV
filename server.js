@@ -107,16 +107,21 @@ function readSurveys() {
 app.get('/api/config', (req, res) => {
   const localIps = getLocalIpAddresses();
   const primaryIp = localIps.length > 0 ? localIps[0] : 'localhost';
+  const hostHeader = req.headers.host;
+  const protocol = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
+  const currentOrigin = hostHeader ? `${protocol}://${hostHeader}` : `http://${primaryIp}:${PORT}`;
   
   res.json({
     config: SURVEY_CONFIG,
     totalCount: db.getSurveyCount(),
     target: SURVEY_CONFIG.targetRespondents,
     localIps,
-    networkUrl: `http://${primaryIp}:${PORT}`,
-    localUrl: `http://localhost:${PORT}`,
+    networkUrl: isServerless ? currentOrigin : `http://${primaryIp}:${PORT}`,
+    localUrl: isServerless ? currentOrigin : `http://localhost:${PORT}`,
+    currentOrigin,
+    isServerless,
     tunnelUrl: process.env.TUNNEL_URL || null,
-    engine: isServerless ? 'SQLite Serverless (/tmp)' : 'SQLite WAL Mode (Enterprise ACID)',
+    engine: isServerless ? 'Vercel Cloud Serverless (Auto Google Sheet Sync)' : 'SQLite WAL Mode (Enterprise ACID)',
     googleSheetConnected: Boolean(googleSheetSync.getWebhookUrl())
   });
 });

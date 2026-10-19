@@ -181,7 +181,21 @@ function updateQrDisplay() {
     btnTunnel.style.display = hasTunnel ? 'inline-block' : 'none';
   }
 
-  if (isTunnel) {
+  if (systemConfig.isServerless) {
+    if (btnTunnel) btnTunnel.style.display = 'none';
+    if (btnLocal) btnLocal.style.display = 'none';
+    if (label) label.innerText = 'Đường dẫn khảo sát trực tuyến đám mây (Vercel HTTPS 24/7):';
+    if (noteBox) {
+      noteBox.style.background = '#ecfdf5';
+      noteBox.style.borderColor = '#a7f3d0';
+      noteBox.style.borderLeftColor = '#059669';
+      noteBox.style.color = '#065f46';
+      noteBox.innerHTML = `<strong>☁️ HỆ THỐNG ĐANG CHẠY TRÊN ĐÁM MÂY (VERCEL 24/7):</strong><br>
+• Mã QR này dùng vĩnh viễn, quét được trên 100% điện thoại (4G, 5G, Wi-Fi bất kỳ).<br>
+• Không cần bật máy tính, nhân viên quét mã ở bất cứ đâu cũng làm bài được!<br>
+• Mọi kết quả tự động đồng bộ sang Google Sheets theo thời gian thực.`;
+    }
+  } else if (isTunnel) {
     if (btnTunnel) { btnTunnel.className = 'btn-action-primary'; }
     if (btnLocal) { btnLocal.className = 'btn-outline'; }
     if (label) label.innerText = 'Đường dẫn khảo sát trực tuyến (Toàn diện 4G/5G/Wi-Fi):';
@@ -207,6 +221,7 @@ function updateQrDisplay() {
 • Nếu chưa chạy máy chủ: Hãy nhấp đúp vào tệp <b>CHAY_KHAO_SAT.bat</b> để khởi động hệ thống.`;
     }
   }
+
 
   renderQrCode(activeUrl);
 }
