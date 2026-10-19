@@ -317,9 +317,16 @@
   </div>
 
   <script>
+    function getStoredAdminToken() {
+      const fromStorage = sessionStorage.getItem('admin_token') || localStorage.getItem('admin_token');
+      if (fromStorage) return fromStorage;
+      const match = document.cookie.match(/(?:^|;\s*)admin_token=([^;]+)/);
+      return match ? decodeURIComponent(match[1]) : '';
+    }
+
     // Auto redirect if already logged in
     (async function checkExistingAuth() {
-      const token = sessionStorage.getItem('admin_token') || localStorage.getItem('admin_token');
+      const token = getStoredAdminToken();
       if (token) {
         try {
           const res = await fetch('/api/admin/check-auth', {
@@ -371,18 +378,20 @@
         const data = await res.json();
 
         if (res.ok && data.success && data.token) {
-          // Store token
+          // Store token in storage & cookies
           sessionStorage.setItem('admin_token', data.token);
           if (remember) {
             localStorage.setItem('admin_token', data.token);
+            document.cookie = `admin_token=${encodeURIComponent(data.token)}; Path=/; Max-Age=86400; SameSite=Lax`;
           } else {
             localStorage.removeItem('admin_token');
+            document.cookie = `admin_token=${encodeURIComponent(data.token)}; Path=/; SameSite=Lax`;
           }
 
           btnSubmit.innerHTML = '<span>✓ Đăng nhập thành công!</span>';
           setTimeout(() => {
             window.location.replace('admin.html');
-          }, 400);
+          }, 300);
         } else {
           loginAlertMsg.innerText = data.message || 'Tên đăng nhập hoặc mật khẩu không chính xác!';
           loginAlert.style.display = 'flex';

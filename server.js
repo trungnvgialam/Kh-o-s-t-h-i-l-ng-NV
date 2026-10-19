@@ -26,32 +26,86 @@ const PORT = process.env.PORT || 3000;
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASS = process.env.ADMIN_PASS || 'admin123';
 
-// In-memory active admin sessions store: token -> { user, createdAt, expiresAt }
+// Persistent Secret for Signing Session Tokens (HMAC-SHA256)
+const SESSION_SECRET = process.env.SESSION_SECRET || 'HOSPITAL_SURVEY_HMAC_SECRET_2026_KEY';
+
+// In-memory active admin sessions store (fallback & revocation list)
 const adminSessions = new Map();
 
-// Helper to create admin session token (valid 24h)
+// Helper to create admin session token (valid 24h, stateless HMAC cryptographic token)
 function createAdminSession(user) {
-  const token = crypto.randomBytes(32).toString('hex');
   const now = Date.now();
+  const payload = {
+    user: user || ADMIN_USER,
+    iat: now,
+    exp: now + 24 * 60 * 60 * 1000 // 24 hours
+  };
+  const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const signature = crypto.createHmac('sha256', SESSION_SECRET).update(payloadB64).digest('base64url');
+  const token = `${payloadB64}.${signature}`;
+
+  // Keep in memory map as fallback for backward compatibility
   adminSessions.set(token, {
-    user,
+    user: payload.user,
     createdAt: now,
-    expiresAt: now + 24 * 60 * 60 * 1000
+    expiresAt: payload.exp
   });
+
+  return token;
+}
+
+// Verify Admin Session Token (Serverless-safe & Memory-safe)
+function verifyAdminSession(token) {
+  if (!token || typeof token !== 'string') return null;
+
+  // 1. Verify HMAC stateless token (Works across any serverless instance or after server restart)
+  if (token.includes('.')) {
+    const parts = token.split('.');
+    if (parts.length === 2) {
+      const [payloadB64, signature] = parts;
+      try {
+        const expectedSig = crypto.createHmac('sha256', SESSION_SECRET).update(payloadB64).digest('base64url');
+        const sigBuf = Buffer.from(signature);
+        const expBuf = Buffer.from(expectedSig);
+        if (sigBuf.length === expBuf.length && crypto.timingSafeEqual(sigBuf, expBuf)) {
+          const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
+          if (payload && payload.exp && Date.now() <= payload.exp) {
+            return { user: payload.user || ADMIN_USER };
+          }
+        }
+      } catch (_) {}
+    }
+  }
+
+  // 2. Check in-memory store fallback
+  const memSession = adminSessions.get(token);
+  if (memSession && Date.now() <= memSession.expiresAt) {
+    return { user: memSession.user };
+  }
+
+  return null;
+}
+
+// Helper to extract token from various sources (Headers, Cookies, Query)
+function extractAdminToken(req) {
+  let token = null;
+  const authHeader = req.headers['authorization'];
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7).trim();
+  } else if (req.headers['x-admin-token']) {
+    token = String(req.headers['x-admin-token']).trim();
+  } else if (req.query && req.query.token) {
+    token = String(req.query.token).trim();
+  } else if (req.headers.cookie) {
+    const match = req.headers.cookie.match(/(?:^|;\s*)admin_token=([^;]+)/);
+    if (match) token = decodeURIComponent(match[1]).trim();
+  }
   return token;
 }
 
 // Authentication middleware for Admin routes
 function requireAdmin(req, res, next) {
-  let token = null;
-  const authHeader = req.headers['authorization'];
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    token = authHeader.substring(7);
-  } else if (req.headers['x-admin-token']) {
-    token = req.headers['x-admin-token'];
-  } else if (req.query && req.query.token) {
-    token = req.query.token;
-  }
+  const token = extractAdminToken(req);
 
   if (!token) {
     return res.status(401).json({
@@ -60,9 +114,8 @@ function requireAdmin(req, res, next) {
     });
   }
 
-  const session = adminSessions.get(token);
-  if (!session || Date.now() > session.expiresAt) {
-    if (session) adminSessions.delete(token);
+  const session = verifyAdminSession(token);
+  if (!session) {
     return res.status(401).json({
       success: false,
       message: 'Phiên làm việc Quản trị viên đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.'
@@ -136,6 +189,7 @@ app.post('/api/admin/login', (req, res) => {
 
   if (username.trim() === ADMIN_USER && settingsManager.verifyAdminPassword(password)) {
     const token = createAdminSession(ADMIN_USER);
+    res.setHeader('Set-Cookie', `admin_token=${encodeURIComponent(token)}; Path=/; Max-Age=86400; SameSite=Lax`);
     return res.json({
       success: true,
       token,
@@ -162,6 +216,7 @@ app.post('/api/admin/logout', (req, res) => {
   if (token) {
     adminSessions.delete(token);
   }
+  res.setHeader('Set-Cookie', 'admin_token=; Path=/; Max-Age=0; SameSite=Lax');
   res.json({ success: true, message: 'Đã đăng xuất thành công.' });
 });
 

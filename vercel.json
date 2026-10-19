@@ -10,7 +10,9 @@
           "public/**",
           "questions.js",
           "db.js",
-          "googleSheetSync.js"
+          "googleSheetSync.js",
+          "settingsManager.js",
+          "scripts/**"
         ]
       }
     }

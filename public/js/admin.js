@@ -20,7 +20,15 @@ function escapeHtml(str) {
 }
 
 function getAdminToken() {
-  return sessionStorage.getItem('admin_token') || localStorage.getItem('admin_token') || '';
+  const fromStorage = sessionStorage.getItem('admin_token') || localStorage.getItem('admin_token');
+  if (fromStorage) return fromStorage;
+  const match = document.cookie.match(/(?:^|;\s*)admin_token=([^;]+)/);
+  if (match) {
+    const val = decodeURIComponent(match[1]);
+    try { sessionStorage.setItem('admin_token', val); } catch (_) {}
+    return val;
+  }
+  return '';
 }
 
 function getAuthHeaders() {
@@ -41,14 +49,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     const authCheck = await fetch('/api/admin/check-auth', {
       headers: { 'Authorization': 'Bearer ' + token }
     });
-    if (!authCheck.ok) {
+    // Chỉ chuyển hướng nếu thực sự bị 401 Unauthorized từ máy chủ
+    if (authCheck.status === 401) {
       sessionStorage.removeItem('admin_token');
       localStorage.removeItem('admin_token');
+      document.cookie = 'admin_token=; Path=/; Max-Age=0;';
       window.location.replace('login.html');
       return;
     }
   } catch (err) {
-    console.warn('Lỗi kiểm tra phiên xác thực:', err);
+    console.warn('Lỗi kiểm tra phiên xác thực (bỏ qua nếu mất kết nối mạng tạm thời):', err);
   }
 
   // Bind token and filter to Excel export link
