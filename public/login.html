@@ -251,7 +251,7 @@
           <label for="password">Mật khẩu bảo mật</label>
           <div class="input-icon-wrap">
             <span class="prefix-icon">🔑</span>
-            <input type="password" id="password" class="login-input" placeholder="Nhập mật khẩu..." required autocomplete="current-password">
+            <input type="password" id="password" class="login-input" placeholder="Nhập mật khẩu (Mặc định: Admin@BV2026)" required autocomplete="new-password">
             <button type="button" class="toggle-pass-btn" id="btn-toggle-pass" title="Hiện/Ẩn mật khẩu">👁️</button>
           </div>
         </div>
@@ -295,7 +295,7 @@
             ⚡ Cách 1: Chạy file 1-Click trên máy chủ (Khuyên dùng)
           </div>
           <p style="margin: 0; font-size: 12.5px; color: #15803d; line-height: 1.5;">
-            Nếu bạn đang ở máy chủ cài đặt hệ thống, hãy nhấp đúp file <strong>Reset_Mat_Khau_Admin.bat</strong> trong thư mục phần mềm để đưa mật khẩu về mặc định <code>admin123</code> ngay lập tức.
+            Nếu bạn đang ở máy chủ cài đặt hệ thống, hãy nhấp đúp file <strong>Reset_Mat_Khau_Admin.bat</strong> trong thư mục phần mềm để đưa mật khẩu về mặc định <code>Admin@BV2026</code> ngay lập tức.
           </p>
         </div>
 
@@ -307,9 +307,9 @@
           <p style="margin: 0 0 10px; font-size: 12px; color: #64748b;">
             Tự động khôi phục nếu đang thao tác từ máy chủ (localhost) hoặc nhập Master Key:
           </p>
-          <input type="password" id="reset-master-key" class="login-input" style="padding: 10px 12px; margin-bottom: 12px; font-size: 13.5px;" placeholder="Nhập Master Key (nếu truy cập từ xa)..." />
+          <input type="password" id="reset-master-key" class="login-input" style="padding: 10px 12px; margin-bottom: 12px; font-size: 13.5px;" placeholder="Nhập Master Key (nếu truy cập từ xa)..." autocomplete="new-password" />
           <button type="button" id="btn-do-reset" class="btn-login" style="padding: 10px; font-size: 13.5px;">
-            🔄 Khôi Phục Về Mặc Định (admin123)
+            🔄 Khôi Phục Về Mặc Định (Admin@BV2026)
           </button>
         </div>
       </div>
@@ -445,8 +445,9 @@
         const data = await res.json();
 
         if (res.ok && data.success) {
-          showResetAlert('Đã khôi phục mật khẩu về mặc định: admin123! Đang tự động điền...', true);
-          if (passInput) passInput.value = data.defaultPassword || 'admin123';
+          const pass = data.defaultPassword || 'Admin@BV2026';
+          showResetAlert(`Đã khôi phục mật khẩu về mặc định: ${pass}! Đang tự động điền...`, true);
+          if (passInput) passInput.value = pass;
           setTimeout(() => {
             if (resetModal) resetModal.style.display = 'none';
             btnSubmit?.focus();
@@ -458,7 +459,7 @@
         showResetAlert('Lỗi kết nối khi gửi yêu cầu khôi phục: ' + err.message, false);
       } finally {
         btnDoReset.disabled = false;
-        btnDoReset.innerText = '🔄 Khôi Phục Về Mặc Định (admin123)';
+        btnDoReset.innerText = '🔄 Khôi Phục Về Mặc Định (Admin@BV2026)';
       }
     });
   </script>

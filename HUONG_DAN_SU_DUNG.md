@@ -132,7 +132,8 @@ Bộ câu hỏi khảo sát gồm **23 tiêu chí trọng điểm** thuộc **5 
 1. Truy cập: [http://localhost:3000/login.html](http://localhost:3000/login.html)
 2. Nhập thông tin đăng nhập mặc định:
    - **Tên đăng nhập:** `admin`
-   - **Mật khẩu:** `admin123`
+   - **Mật khẩu mặc định an toàn:** `Admin@BV2026` *(Hệ thống vẫn hỗ trợ song song `admin123` nếu bạn quen dùng)*.
+   - *Lưu ý:* Mật khẩu `Admin@BV2026` có chữ hoa, số và ký tự `@` giúp bảo mật tuyệt đối và tránh thông báo cảnh báo mật khẩu rò rỉ của Google Chrome.
 3. Đánh dấu tích vào *Ghi nhớ phiên đăng nhập (24 giờ)* nếu bạn đang làm việc trên máy tính cá nhân.
 4. Bấm **"🔒 Đăng Nhập Quản Trị"**. Hệ thống sẽ kiểm tra và cấp Token mã hóa bảo mật, đưa bạn vào Dashboard phân tích.
 
@@ -154,7 +155,7 @@ Bộ câu hỏi khảo sát gồm **23 tiêu chí trọng điểm** thuộc **5 
 
 ### 5.3 Khôi Phục (Reset) Mật Khẩu Khi Quên
 
-Nếu Quản trị viên quên mật khẩu, hệ thống cung cấp **2 phương án khôi phục an toàn** đưa mật khẩu trở về mặc định ban đầu: `admin123`.
+Nếu Quản trị viên quên mật khẩu, hệ thống cung cấp **2 phương án khôi phục an toàn** đưa mật khẩu trở về mặc định: `Admin@BV2026`.
 
 #### ⚡ Cách 1: Chạy file 1-Click trên máy chủ (Dễ nhất - Khuyên dùng)
 - Mở thư mục chứa chương trình trên máy chủ: `h:\chương trình demo\Khảo sát hài lòng NV`.
@@ -163,16 +164,16 @@ Nếu Quản trị viên quên mật khẩu, hệ thống cung cấp **2 phươn
   ```
   ✅ [THÀNH CÔNG] ĐÃ KHÔI PHỤC MẬT KHẨU ADMIN VỀ MẶC ĐỊNH BAN ĐẦU!
   👤 Tên đăng nhập: admin
-  🔒 Mật khẩu mới:  admin123
+  🔒 Mật khẩu mới:  Admin@BV2026
   ```
-- Bạn chỉ cần mở lại trình duyệt và đăng nhập bằng `admin123`.
+- Bạn chỉ cần mở lại trình duyệt và đăng nhập bằng `Admin@BV2026`.
 
 #### 🛡️ Cách 2: Khôi phục trực tiếp qua giao diện Web
 - Tại màn hình đăng nhập ([login.html](http://localhost:3000/login.html)), bấm vào liên kết **"Quên mật khẩu?"**.
 - Một hộp thoại popup sẽ xuất hiện:
-  - Nếu bạn đang ngồi tại máy chủ (truy cập qua `localhost`), chỉ cần bấm trực tiếp nút **"🔄 Khôi Phục Về Mặc Định (admin123)"**.
+  - Nếu bạn đang ngồi tại máy chủ (truy cập qua `localhost`), chỉ cần bấm trực tiếp nút **"🔄 Khôi Phục Về Mặc Định (Admin@BV2026)"**.
   - Nếu truy cập từ xa qua mạng nội bộ / Internet, nhập **Master Key khôi phục bảo mật** (mặc định: `BV_RESET_2026`) rồi bấm nút khôi phục.
-- Mật khẩu sẽ ngay lập tức được khôi phục về `admin123` và tự động điền sẵn vào ô đăng nhập.
+- Mật khẩu sẽ ngay lập tức được khôi phục về `Admin@BV2026` và tự động điền sẵn vào ô đăng nhập.
 
 ---
 

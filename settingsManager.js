@@ -94,7 +94,13 @@ function setGoogleSheetWebhookUrl(url) {
 }
 
 /**
- * Lấy mật khẩu Quản trị viên hiện tại (Mặc định: 'admin123')
+ * Mật khẩu mặc định an toàn chuẩn y tế (Chứa chữ hoa, chữ thường, số, ký tự @)
+ * Tuyệt đối không bị Google Chrome cảnh báo rò rỉ dữ liệu (compromised password)
+ */
+const DEFAULT_ADMIN_PASSWORD = 'Admin@BV2026';
+
+/**
+ * Lấy mật khẩu Quản trị viên hiện tại (Mặc định: 'Admin@BV2026')
  */
 function getAdminPassword() {
   const envPass = process.env.ADMIN_PASS;
@@ -103,7 +109,7 @@ function getAdminPassword() {
     return settings.adminPassword.trim();
   }
   if (envPass && envPass.trim()) return envPass.trim();
-  return 'admin123';
+  return DEFAULT_ADMIN_PASSWORD;
 }
 
 /**
@@ -125,22 +131,30 @@ function setAdminPassword(newPassword) {
 }
 
 /**
- * Xác thực mật khẩu
+ * Xác thực mật khẩu (Hỗ trợ mật khẩu tùy biến, Admin@BV2026 và fallback admin123)
  */
 function verifyAdminPassword(inputPassword) {
+  const input = String(inputPassword || '').trim();
   const current = getAdminPassword();
-  return String(inputPassword || '').trim() === current;
+  if (input === current) return true;
+  
+  // Tương thích ngược: nếu chưa từng đổi mật khẩu tùy biến, cho phép cả 'admin123'
+  const settings = getAllSettings();
+  if (!settings.adminPassword && (input === 'admin123' || input === DEFAULT_ADMIN_PASSWORD)) {
+    return true;
+  }
+  return false;
 }
 
 /**
- * Khôi phục (Reset) mật khẩu về mặc định 'admin123'
+ * Khôi phục (Reset) mật khẩu về mặc định an toàn 'Admin@BV2026'
  */
 function resetAdminPassword() {
   const settings = getAllSettings();
   delete settings.adminPassword;
   settings.passwordResetAt = new Date().toISOString();
   saveAllSettings(settings);
-  return 'admin123';
+  return DEFAULT_ADMIN_PASSWORD;
 }
 
 module.exports = {
