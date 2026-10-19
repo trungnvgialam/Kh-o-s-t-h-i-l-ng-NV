@@ -115,7 +115,7 @@ app.get('/api/config', (req, res) => {
     localIps,
     networkUrl: `http://${primaryIp}:${PORT}`,
     localUrl: `http://localhost:${PORT}`,
-    tunnelUrl: process.env.TUNNEL_URL || 'https://violation-flush-wma-bikini.trycloudflare.com',
+    tunnelUrl: process.env.TUNNEL_URL || null,
     engine: isServerless ? 'SQLite Serverless (/tmp)' : 'SQLite WAL Mode (Enterprise ACID)',
     googleSheetConnected: Boolean(googleSheetSync.getWebhookUrl())
   });

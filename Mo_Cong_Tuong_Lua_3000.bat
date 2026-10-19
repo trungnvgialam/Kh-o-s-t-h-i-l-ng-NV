@@ -31,8 +31,16 @@ echo ======================================================================
 echo   ✅ [THÀNH CÔNG] ĐÃ MỞ CỔNG 3000 TRONG TƯỜNG LỬA WINDOWS!
 echo ======================================================================
 echo   - Tường lửa đã cho phép điện thoại kết nối vào cổng 3000.
-echo   - Bây giờ bạn có thể dùng camera điện thoại hoặc Zalo quét mã QR.
-echo   - Trang web khảo sát sẽ mở ra ngay lập tức trên điện thoại!
+echo.
+echo   🚀 ĐANG TỰ ĐỘNG KHỞI CHẠY MÁY CHỦ KHẢO SÁT NGAY BÂY GIỜ...
 echo ======================================================================
 echo.
+
+:: Tự động mở trình duyệt sau 2 giây
+start "" powershell -NoProfile -Command "Start-Sleep -Seconds 2; Start-Process 'http://localhost:3000/login.html'"
+
+:: Khởi động máy chủ Node.js
+node server.js
+
 pause
+
