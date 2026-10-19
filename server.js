@@ -134,7 +134,7 @@ app.post('/api/admin/login', (req, res) => {
     return res.status(400).json({ success: false, message: 'Vui lòng nhập tên đăng nhập và mật khẩu.' });
   }
 
-  if (username.trim() === ADMIN_USER && password === ADMIN_PASS) {
+  if (username.trim() === ADMIN_USER && settingsManager.verifyAdminPassword(password)) {
     const token = createAdminSession(ADMIN_USER);
     return res.json({
       success: true,
@@ -168,6 +168,81 @@ app.post('/api/admin/logout', (req, res) => {
 // API: Check Admin Auth status
 app.get('/api/admin/check-auth', requireAdmin, (req, res) => {
   res.json({ success: true, authenticated: true, user: req.adminUser });
+});
+
+// API: Admin Change Password
+app.post('/api/admin/change-password', requireAdmin, (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body || {};
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng nhập đầy đủ mật khẩu hiện tại và mật khẩu mới.'
+      });
+    }
+
+    if (!settingsManager.verifyAdminPassword(currentPassword)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mật khẩu hiện tại không chính xác. Vui lòng thử lại!'
+      });
+    }
+
+    if (String(newPassword).length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mật khẩu mới phải có ít nhất 6 ký tự trở lên!'
+      });
+    }
+
+    settingsManager.setAdminPassword(newPassword);
+    console.log('[Security] Quản trị viên đã đổi mật khẩu thành công lúc:', new Date().toLocaleString('vi-VN'));
+
+    return res.json({
+      success: true,
+      message: 'Đổi mật khẩu Quản trị viên thành công! Vui lòng ghi nhớ mật khẩu mới.'
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: 'Lỗi khi cập nhật mật khẩu: ' + err.message
+    });
+  }
+});
+
+// API: Admin Reset Password (Khôi phục mật khẩu về mặc định 'admin123')
+// Cho phép gọi an toàn từ localhost (máy chủ) hoặc cung cấp Master Key khôi phục
+app.post('/api/admin/reset-password', (req, res) => {
+  try {
+    const { masterKey } = req.body || {};
+    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+    const isLocal = clientIp.includes('127.0.0.1') || clientIp.includes('::1') || req.hostname === 'localhost';
+    const isMasterAuthorized = masterKey && (masterKey === 'BV_RESET_2026' || (process.env.ADMIN_MASTER_KEY && masterKey === process.env.ADMIN_MASTER_KEY));
+
+    if (!isLocal && !isMasterAuthorized) {
+      return res.status(403).json({
+        success: false,
+        message: 'Không có quyền khôi phục mật khẩu. Chỉ được khôi phục từ máy chủ (Localhost) hoặc cần Master Key hợp lệ.'
+      });
+    }
+
+    const defaultPass = settingsManager.resetAdminPassword();
+    // Invalidate old sessions to enforce re-login
+    adminSessions.clear();
+
+    console.log('[Security] Đã khôi phục mật khẩu Admin về mặc định lúc:', new Date().toLocaleString('vi-VN'), 'từ IP:', clientIp);
+
+    return res.json({
+      success: true,
+      message: 'Đã khôi phục mật khẩu Quản trị về mặc định thành công!',
+      defaultPassword: defaultPass
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: 'Lỗi khi khôi phục mật khẩu: ' + err.message
+    });
+  }
 });
 
 // API: Submit a response (Thread-safe, Concurrency-proof, Validated & Sanitized)
@@ -779,6 +854,47 @@ app.get('/api/admin/google-sheet-script', requireAdmin, (req, res) => {
   }
   res.status(404).send('File script không tồn tại.');
 });
+
+// API: Đổi mật khẩu Quản trị viên (Admin only)
+app.post('/api/admin/change-password', requireAdmin, (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body || {};
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Vui lòng nhập đầy đủ mật khẩu hiện tại và mật khẩu mới.' });
+    }
+    if (!settingsManager.verifyAdminPassword(currentPassword)) {
+      return res.status(400).json({ success: false, message: 'Mật khẩu hiện tại không chính xác!' });
+    }
+    settingsManager.setAdminPassword(newPassword);
+    res.json({ success: true, message: 'Đổi mật khẩu Quản trị viên thành công!' });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+// API: Khôi phục mật khẩu Quản trị viên về mặc định (admin123)
+app.post('/api/admin/reset-password', (req, res) => {
+  try {
+    const { resetKey } = req.body || {};
+    const clientIp = req.ip || req.connection?.remoteAddress || '';
+    const isLocal = clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1';
+    
+    // Yêu cầu gọi từ máy tính cục bộ (localhost) hoặc có Master Key dự phòng
+    if (!isLocal && resetKey !== 'BV_RESET_2026') {
+      return res.status(403).json({ success: false, message: 'Yêu cầu không được phép. Vui lòng thực hiện trên máy chủ hoặc liên hệ IT.' });
+    }
+    
+    const defPass = settingsManager.resetAdminPassword();
+    res.json({
+      success: true,
+      defaultPassword: defPass,
+      message: `Đã khôi phục mật khẩu Quản trị viên về mặc định thành công: ${defPass}`
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 
 
 

@@ -93,10 +93,65 @@ function setGoogleSheetWebhookUrl(url) {
   return true;
 }
 
+/**
+ * Lấy mật khẩu Quản trị viên hiện tại (Mặc định: 'admin123')
+ */
+function getAdminPassword() {
+  const envPass = process.env.ADMIN_PASS;
+  const settings = getAllSettings();
+  if (settings.adminPassword && typeof settings.adminPassword === 'string' && settings.adminPassword.trim()) {
+    return settings.adminPassword.trim();
+  }
+  if (envPass && envPass.trim()) return envPass.trim();
+  return 'admin123';
+}
+
+/**
+ * Đổi mật khẩu Quản trị viên mới
+ */
+function setAdminPassword(newPassword) {
+  const pass = String(newPassword || '').trim();
+  if (!pass || pass.length < 6) {
+    throw new Error('Mật khẩu mới phải có độ dài tối thiểu từ 6 ký tự trở lên!');
+  }
+  if (pass.length > 50) {
+    throw new Error('Mật khẩu không được dài quá 50 ký tự!');
+  }
+  const settings = getAllSettings();
+  settings.adminPassword = pass;
+  settings.passwordUpdatedAt = new Date().toISOString();
+  saveAllSettings(settings);
+  return true;
+}
+
+/**
+ * Xác thực mật khẩu
+ */
+function verifyAdminPassword(inputPassword) {
+  const current = getAdminPassword();
+  return String(inputPassword || '').trim() === current;
+}
+
+/**
+ * Khôi phục (Reset) mật khẩu về mặc định 'admin123'
+ */
+function resetAdminPassword() {
+  const settings = getAllSettings();
+  delete settings.adminPassword;
+  settings.passwordResetAt = new Date().toISOString();
+  saveAllSettings(settings);
+  return 'admin123';
+}
+
 module.exports = {
   getAllSettings,
   getTargetRespondents,
   setTargetRespondents,
   getGoogleSheetWebhookUrl,
-  setGoogleSheetWebhookUrl
+  setGoogleSheetWebhookUrl,
+  getAdminPassword,
+  setAdminPassword,
+  verifyAdminPassword,
+  resetAdminPassword
 };
+

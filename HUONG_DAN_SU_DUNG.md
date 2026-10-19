@@ -9,15 +9,18 @@
 2. [Cấu trúc Bộ Tiêu chí Đánh giá (23 Tiêu chí)](#2-cấu-trúc-bộ-tiêu-chí-đánh-giá-23-tiêu-chí)
 3. [Kiến trúc & Đường dẫn Truy cập Hệ thống](#3-kiến-trúc--đường-dẫn-truy-cập-hệ-thống)
 4. [Hướng dẫn Dành cho Nhân viên Y tế (Làm bài Khảo sát)](#4-hướng-dẫn-dành-cho-nhân-viên-y-tế-làm-bài-khảo-sát)
-5. [Hướng dẫn Dành cho Quản trị viên (Ban Giám đốc & Phòng QLCL)](#5-hướng-dẫn-dành-cho-quản-trị-viên-ban-giám-đốc--phòng-qlcl)
+5. [Hướng dẫn Dành cho Quản trị viên (Ban Giám đốc & Phòng QLCL)](#5-hướng-dành-cho-quản-trị-viên-ban-giám-đốc--phòng-qlcl)
    - [5.1 Đăng nhập Bảo mật](#51-đăng-nhập-bảo-mật)
-   - [5.2 Đọc hiểu các Chỉ số KPI & Phương pháp Tính toán](#52-đọc-hiểu-các-chỉ-số-kpi--phương-pháp-tính-toán)
-   - [5.3 Khai thác Biểu đồ & Ma trận Ưu tiên Cải tiến](#53-khai-thác-biểu-đồ--ma-trận-ưu-tiên-cải-tiến)
-   - [5.4 Lọc Số liệu theo Từng Khối Khoa Phòng](#54-lọc-số-liệu-theo-từng-khối-khoa-phòng)
-   - [5.5 Xuất Báo cáo Excel (.xlsx) Chuẩn Bộ Y tế](#55-xuất-báo-cáo-excel-xlsx-chuẩn-bộ-y-tế)
-   - [5.6 Trình chiếu & In Mã QR Khảo sát](#56-trình-chiếu--in-mã-qr-khảo-sát)
-   - [5.7 Tạo Dữ liệu Mô phỏng Demo & Làm Mới Dữ liệu Thật](#57-tạo-dữ-liệu-mô-phỏng-demo--làm-mới-dữ-liệu-thật)
-   - [5.8 Đăng xuất An toàn](#58-đăng-xuất-an-toàn)
+   - [5.2 Đổi Mật Khẩu Quản Trị Viên](#52-đổi-mật-khẩu-quản-trị-viên)
+   - [5.3 Khôi Phục (Reset) Mật Khẩu Khi Quên](#53-khôi-phục-reset-mật-khẩu-khi-quên)
+   - [5.4 Tùy Chỉnh Quy Mô Nhân Sự Mục Tiêu (500 NV)](#54-tùy-chỉnh-quy-mô-nhân-sự-mục-tiêu)
+   - [5.5 Đọc hiểu các Chỉ số KPI & Phương pháp Tính toán](#55-đọc-hiểu-các-chỉ-số-kpi--phương-pháp-tính-toán)
+   - [5.6 Khai thác Biểu đồ & Ma trận Ưu tiên Cải tiến](#56-khai-thác-biểu-đồ--ma-trận-ưu-tiên-cải-tiến)
+   - [5.7 Lọc Số liệu theo Từng Khối Khoa Phòng](#57-lọc-số-liệu-theo-từng-khối-khoa-phòng)
+   - [5.8 Xuất Báo cáo Excel (.xlsx) Chuẩn Bộ Y tế](#58-xuất-báo-cáo-excel-xlsx-chuẩn-bộ-y-tế)
+   - [5.9 Trình chiếu & In Mã QR Khảo sát](#59-trình-chiếu--in-mã-qr-khảo-sát)
+   - [5.10 Tự Động Đồng Bộ Đám Mây Sang Google Sheets](#510-tự-động-đồng-bộ-đám-mây-sang-google-sheets)
+   - [5.11 Làm Mới Dữ Liệu Khảo Sát & Đăng Xuất An Toàn](#511-làm-mới-dữ-liệu-khảo-sát--đăng-xuất-an-toàn)
 6. [Cơ chế Lưu trữ & An toàn Dữ liệu](#6-cơ-chế-lưu-trữ--an-toàn-dữ-liệu)
 7. [Xử lý Sự cố Thường gặp (FAQ)](#7-xử-lý-sự-cố-thường-gặp-faq)
 
@@ -135,7 +138,55 @@ Bộ câu hỏi khảo sát gồm **23 tiêu chí trọng điểm** thuộc **5 
 
 ---
 
-### 5.2 Đọc hiểu các Chỉ số KPI & Phương pháp Tính toán
+### 5.2 Đổi Mật Khẩu Quản Trị Viên
+
+Để tăng cường an toàn thông tin theo quy chuẩn bệnh viện, Quản trị viên có thể chủ động đổi mật khẩu đăng nhập bất kỳ lúc nào:
+
+1. Tại trang **Dashboard Quản Trị**, bấm nút **"🔑 Đổi Mật Khẩu"** trên thanh Menu trên cùng.
+2. Hộp thoại popup bảo mật xuất hiện:
+   - **Mật khẩu hiện tại:** Nhập mật khẩu bạn đang dùng.
+   - **Mật khẩu mới:** Nhập mật khẩu mới (yêu cầu tối thiểu từ 6 ký tự trở lên).
+   - **Xác nhận mật khẩu mới:** Nhập lại chính xác mật khẩu mới.
+3. Bấm **"💾 Lưu Mật Khẩu"**.
+4. Hệ thống sẽ lưu mật khẩu mới chuẩn ACID vào cơ sở cấu hình `settings.json`, duy trì vĩnh viễn ngay cả khi khởi động lại máy chủ.
+
+---
+
+### 5.3 Khôi Phục (Reset) Mật Khẩu Khi Quên
+
+Nếu Quản trị viên quên mật khẩu, hệ thống cung cấp **2 phương án khôi phục an toàn** đưa mật khẩu trở về mặc định ban đầu: `admin123`.
+
+#### ⚡ Cách 1: Chạy file 1-Click trên máy chủ (Dễ nhất - Khuyên dùng)
+- Mở thư mục chứa chương trình trên máy chủ: `h:\chương trình demo\Khảo sát hài lòng NV`.
+- Nhấp đúp vào tệp: **`Reset_Mat_Khau_Admin.bat`**.
+- Cửa sổ màu xanh lá sẽ hiển thị:
+  ```
+  ✅ [THÀNH CÔNG] ĐÃ KHÔI PHỤC MẬT KHẨU ADMIN VỀ MẶC ĐỊNH BAN ĐẦU!
+  👤 Tên đăng nhập: admin
+  🔒 Mật khẩu mới:  admin123
+  ```
+- Bạn chỉ cần mở lại trình duyệt và đăng nhập bằng `admin123`.
+
+#### 🛡️ Cách 2: Khôi phục trực tiếp qua giao diện Web
+- Tại màn hình đăng nhập ([login.html](http://localhost:3000/login.html)), bấm vào liên kết **"Quên mật khẩu?"**.
+- Một hộp thoại popup sẽ xuất hiện:
+  - Nếu bạn đang ngồi tại máy chủ (truy cập qua `localhost`), chỉ cần bấm trực tiếp nút **"🔄 Khôi Phục Về Mặc Định (admin123)"**.
+  - Nếu truy cập từ xa qua mạng nội bộ / Internet, nhập **Master Key khôi phục bảo mật** (mặc định: `BV_RESET_2026`) rồi bấm nút khôi phục.
+- Mật khẩu sẽ ngay lập tức được khôi phục về `admin123` và tự động điền sẵn vào ô đăng nhập.
+
+---
+
+### 5.4 Tùy Chỉnh Quy Mô Nhân Sự Mục Tiêu
+
+Bệnh viện có thể linh hoạt điều chỉnh quy mô nhân sự (ví dụ từ 500 NV sang 350 NV, 700 NV, 1000 NV...):
+1. Tại Dashboard Quản Trị, tìm đến thẻ **"Tổng Số Phiếu Đã Nộp"**.
+2. Bấm vào nút **"⚙️ Đổi mục tiêu"**.
+3. Chọn nhanh các mốc quy mô có sẵn (*100, 200, 350, 500, 700, 1.000, 1.500 NV*) hoặc nhập số lượng chính xác tùy biến theo thực tế nhân sự toàn viện.
+4. Bấm **"💾 Lưu Mục Tiêu Mới"**. Toàn bộ thanh tiến trình % và tỷ lệ hoàn thành KPI sẽ tự động tính toán lại tức thì.
+
+---
+
+### 5.5 Đọc hiểu các Chỉ số KPI & Phương pháp Tính toán
 
 Ngay đầu Dashboard là 4 thẻ chỉ số KPI tổng thể:
 

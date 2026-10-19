@@ -908,6 +908,11 @@ function setupEventListeners() {
   // TARGET RESPONDENTS CUSTOM CONTROLLER
   // ==========================================
   setupTargetModalEvents();
+
+  // ==========================================
+  // ADMIN PASSWORD CHANGE CONTROLLER
+  // ==========================================
+  setupPasswordModalEvents();
 }
 
 function setupTargetModalEvents() {
@@ -991,6 +996,106 @@ function setupTargetModalEvents() {
     } finally {
       btnSaveTarget.disabled = false;
       btnSaveTarget.innerText = '💾 Lưu Mục Tiêu Mới';
+    }
+  });
+}
+
+function setupPasswordModalEvents() {
+  const pwdModal = document.getElementById('pwd-modal');
+  const btnOpenPwd = document.getElementById('btn-open-pwd');
+  const btnClosePwd = document.getElementById('btn-close-pwd');
+  const btnCancelPwd = document.getElementById('btn-cancel-pwd');
+  const btnSavePwd = document.getElementById('btn-save-pwd');
+  const pwdCurrent = document.getElementById('pwd-current');
+  const pwdNew = document.getElementById('pwd-new');
+  const pwdConfirm = document.getElementById('pwd-confirm');
+  const pwdAlert = document.getElementById('pwd-alert-box');
+
+  function showPwdAlert(msg, isSuccess = true) {
+    if (!pwdAlert) return;
+    pwdAlert.style.display = 'block';
+    pwdAlert.style.background = isSuccess ? '#ecfdf5' : '#fef2f2';
+    pwdAlert.style.color = isSuccess ? '#065f46' : '#991b1b';
+    pwdAlert.style.border = isSuccess ? '1px solid #a7f3d0' : '1px solid #fecaca';
+    pwdAlert.innerHTML = (isSuccess ? '✅ ' : '⚠️ ') + msg;
+  }
+
+  function hidePwdAlert() {
+    if (pwdAlert) pwdAlert.style.display = 'none';
+  }
+
+  function clearPwdInputs() {
+    if (pwdCurrent) pwdCurrent.value = '';
+    if (pwdNew) pwdNew.value = '';
+    if (pwdConfirm) pwdConfirm.value = '';
+    hidePwdAlert();
+  }
+
+  btnOpenPwd?.addEventListener('click', () => {
+    clearPwdInputs();
+    if (pwdModal) pwdModal.classList.add('active');
+    setTimeout(() => pwdCurrent?.focus(), 100);
+  });
+
+  btnClosePwd?.addEventListener('click', () => {
+    if (pwdModal) pwdModal.classList.remove('active');
+  });
+
+  btnCancelPwd?.addEventListener('click', () => {
+    if (pwdModal) pwdModal.classList.remove('active');
+  });
+
+  pwdModal?.addEventListener('click', (e) => {
+    if (e.target === pwdModal) pwdModal.classList.remove('active');
+  });
+
+  btnSavePwd?.addEventListener('click', async () => {
+    const currentPassword = pwdCurrent?.value || '';
+    const newPassword = pwdNew?.value || '';
+    const confirmPassword = pwdConfirm?.value || '';
+
+    if (!currentPassword) {
+      showPwdAlert('Vui lòng nhập mật khẩu hiện tại.', false);
+      pwdCurrent?.focus();
+      return;
+    }
+
+    if (!newPassword || newPassword.length < 6) {
+      showPwdAlert('Mật khẩu mới phải có tối thiểu 6 ký tự.', false);
+      pwdNew?.focus();
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      showPwdAlert('Mật khẩu xác nhận không khớp. Vui lòng kiểm tra lại.', false);
+      pwdConfirm?.focus();
+      return;
+    }
+
+    btnSavePwd.disabled = true;
+    btnSavePwd.innerText = 'Đang lưu...';
+
+    try {
+      const res = await fetch('/api/admin/change-password', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ currentPassword, newPassword })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showPwdAlert(data.message, true);
+        setTimeout(() => {
+          if (pwdModal) pwdModal.classList.remove('active');
+          clearPwdInputs();
+        }, 1500);
+      } else {
+        showPwdAlert(data.message || 'Đổi mật khẩu thất bại.', false);
+      }
+    } catch (err) {
+      showPwdAlert('Lỗi kết nối khi đổi mật khẩu: ' + err.message, false);
+    } finally {
+      btnSavePwd.disabled = false;
+      btnSavePwd.innerText = '💾 Lưu Mật Khẩu';
     }
   });
 }
