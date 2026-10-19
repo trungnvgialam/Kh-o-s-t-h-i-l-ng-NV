@@ -973,8 +973,9 @@ app.post('/api/admin/reset-password', (req, res) => {
 if (!isServerless) {
   const server = app.listen(PORT, () => {
     const localIps = getLocalIpAddresses();
+    const currentTarget = settingsManager.getTargetRespondents();
     console.log(`=======================================================`);
-    console.log(`🏥 HỆ THỐNG KHẢO SÁT HÀI LÒNG NHÂN VIÊN Y TẾ (500 NV)`);
+    console.log(`🏥 HỆ THỐNG KHẢO SÁT HÀI LÒNG NHÂN VIÊN Y TẾ (${currentTarget} NV)`);
     console.log(`💾 CƠ SỞ DỮ LIỆU: SQLite Enterprise ACID (WAL Mode, Non-blocking)`);
     console.log(`📁 File lưu trữ: data/surveys.db (Kèm auto-sync backup JSON)`);
     console.log(`🚀 Cổng dịch vụ: http://localhost:${PORT}`);

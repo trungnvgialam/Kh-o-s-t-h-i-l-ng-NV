@@ -9,7 +9,7 @@ Hệ thống ứng dụng web chuyên biệt phục vụ khảo sát ẩn danh s
 
 * **Phiếu khảo sát nhân viên:** [http://localhost:3000](http://localhost:3000)
 * **Cổng đăng nhập Quản trị:** [http://localhost:3000/login.html](http://localhost:3000/login.html)
-  * *Tài khoản mặc định:* `admin` / `admin123`
+  * *Tài khoản mặc định:* `admin` / `Admin@BV2026` (hoặc `admin123`)
 * **Dashboard Báo cáo & Thống kê:** [http://localhost:3000/admin.html](http://localhost:3000/admin.html)
 
 ---

@@ -5,7 +5,7 @@
 
 const SURVEY_CONFIG = {
   title: "Khảo Sát Sự Hài Lòng Nhân Viên Y Tế",
-  targetRespondents: 500,
+  targetRespondents: 350,
   organization: "Cơ Sở Y Tế / Bệnh Viện",
   description: "Khảo sát này được thực hiện nhằm ghi nhận ý kiến khách quan của toàn thể cán bộ, nhân viên y tế về môi trường làm việc, chế độ đãi ngộ, quan hệ đồng nghiệp và công tác quản lý. Kết quả là căn cứ quan trọng để Ban Giám đốc hoạch định chính sách cải tiến, nâng cao đời sống và sự gắn kết của nhân viên.",
   confidentialityNote: "Khảo sát hoàn toàn ẨN DANH. Mọi thông tin phản hồi chỉ sử dụng cho mục đích phân tích thống kê tổng hợp và nâng cao chất lượng bệnh viện.",
