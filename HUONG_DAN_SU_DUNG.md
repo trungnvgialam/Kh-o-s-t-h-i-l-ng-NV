@@ -218,6 +218,27 @@ Tại thanh công cụ lọc:
 
 ---
 
+### 5.9 Tự Động Đồng Bộ Đám Mây Sang Google Sheets (Cloud Real-Time Backup)
+
+Đây là tính năng **kết hợp 2 trong 1 (Hybrid)** giúp bảo đảm an toàn dữ liệu 100%, không bao giờ lo mất phiếu dù máy chủ có khởi động lại hay chuyển sang máy tính khác:
+- **Cơ chế hoạt động:** Mỗi khi có bất kỳ nhân viên nào bấm *"Gửi phiếu khảo sát"* trên điện thoại hoặc máy tính:
+  1. Dữ liệu được lưu ngay lập tức vào cơ sở dữ liệu hệ thống (SQLite) để phục vụ Dashboard Admin, vẽ biểu đồ Radar 5 nhóm, tính điểm CSI, eNPS và xuất Excel chuẩn Bộ Y tế.
+  2. **Đồng thời một bản ghi tự động đẩy ngầm (Real-time Async Webhook) sang Google Sheets** trên Google Drive của bệnh viện/quản trị viên.
+- **Xem dữ liệu trực tiếp trên điện thoại:** Lãnh đạo hoặc Quản trị viên chỉ cần mở ứng dụng Google Sheets trên điện thoại là có thể theo dõi từng phiếu mới nộp theo thời gian thực (được chuyển đổi sang tiếng Việt rõ ràng từng khoa phòng, chức danh, 23 tiêu chí chấm điểm và trọn vẹn lời góp ý hiến kế).
+- **Cách cài đặt đơn giản trong 1 phút:**
+  1. Mở trang Google Sheets mới tại [https://sheet.new](https://sheet.new).
+  2. Trên menu, chọn **Tiện ích mở rộng** (Extensions) ➔ **Apps Script**.
+  3. Xóa code mặc định, dán toàn bộ mã nguồn trong tệp [GOOGLE_SHEET_APPS_SCRIPT.js](file:///h:/chương%20trình%20demo/Khảo%20sát%20hài%20lòng%20NV/GOOGLE_SHEET_APPS_SCRIPT.js) vào ➔ Bấm nút **Lưu** (Ctrl + S).
+  4. Bấm **Triển khai** (Deploy) ➔ **Tùy chọn triển khai mới** (New deployment):
+     - Loại: Chọn **Ứng dụng web** (Web app).
+     - Người có quyền truy cập: Chọn **Bất kỳ ai** (Anyone).
+     - Bấm **Triển khai** ➔ Cấp quyền khi được hỏi ➔ Sao chép liên kết **URL ứng dụng web**.
+  5. Vào trang Dashboard Quản trị ([admin.html](file:///h:/chương%20trình%20demo/Khảo%20sát%20hài%20lòng%20NV/public/admin.html)) ➔ Bấm nút **"📊 Đồng Bộ Google Sheet"** ➔ Dán link Webhook vào ô và bấm **"💾 Lưu Cấu Hình"** ➔ Bấm **"🧪 Kiểm Tra Kết Nối"**.
+  6. Nếu trong hệ thống đã có sẵn các phiếu cũ trước đó, chỉ cần bấm **"🚀 Đồng Bộ Toàn Bộ Phiếu Ngay"** để đưa toàn bộ dữ liệu sang Google Sheet chỉ trong 1 cú click!
+
+---
+
+
 ## 6. CƠ CHẾ LƯU TRỮ & AN TOÀN DỮ LIỆU (SQLITE ENTERPRISE WAL ENGINE)
 
 Hệ thống đã được **nâng cấp lên mức tối đa** với công nghệ cơ sở dữ liệu **SQLite Enterprise** chuẩn ACID (sử dụng thư viện `better-sqlite3`), bảo đảm tốc độ siêu tốc và an toàn tuyệt đối ngay cả khi hàng trăm nhân viên nộp bài cùng lúc:

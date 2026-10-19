@@ -864,4 +864,216 @@ function setupEventListeners() {
       document.body.classList.remove('printing-qr');
     }, { once: true });
   });
+
+  // ==========================================
+  // GOOGLE SHEETS CLOUD SYNC CONTROLLER
+  // ==========================================
+  setupGoogleSheetSyncEvents();
+}
+
+function setupGoogleSheetSyncEvents() {
+  const gsheetModal = document.getElementById('gsheet-modal');
+  const btnOpenGSheet = document.getElementById('btn-open-gsheet');
+  const btnCloseGSheet = document.getElementById('btn-close-gsheet');
+  const gsheetInput = document.getElementById('gsheet-webhook-input');
+  const statusBadge = document.getElementById('gsheet-status-badge');
+  const alertBox = document.getElementById('gsheet-alert-box');
+  const btnSave = document.getElementById('btn-save-gsheet');
+  const btnTest = document.getElementById('btn-test-gsheet');
+  const btnSyncAll = document.getElementById('btn-sync-all-gsheet');
+  const btnCopyScript = document.getElementById('btn-copy-script');
+
+  function showAlert(msg, isSuccess = true) {
+    if (!alertBox) return;
+    alertBox.style.display = 'block';
+    alertBox.style.background = isSuccess ? '#ecfdf5' : '#fef2f2';
+    alertBox.style.border = isSuccess ? '1px solid #a7f3d0' : '1px solid #fecaca';
+    alertBox.style.color = isSuccess ? '#065f46' : '#991b1b';
+    alertBox.innerHTML = (isSuccess ? '✅ ' : '⚠️ ') + msg;
+  }
+
+  function hideAlert() {
+    if (alertBox) alertBox.style.display = 'none';
+  }
+
+  async function loadGSheetConfig() {
+    hideAlert();
+    if (statusBadge) {
+      statusBadge.style.background = '#f1f5f9';
+      statusBadge.style.color = '#64748b';
+      statusBadge.innerText = '⏳ Đang kiểm tra...';
+    }
+
+    try {
+      const res = await fetch('/api/admin/google-sheet-config', {
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (gsheetInput) gsheetInput.value = data.webhookUrl || '';
+        if (statusBadge) {
+          if (data.configured) {
+            statusBadge.style.background = '#ecfdf5';
+            statusBadge.style.color = '#047857';
+            statusBadge.innerText = '✓ Đang hoạt động';
+          } else {
+            statusBadge.style.background = '#fef2f2';
+            statusBadge.style.color = '#b91c1c';
+            statusBadge.innerText = '⚠️ Chưa kết nối';
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Lỗi tải cấu hình Google Sheet:', err);
+    }
+  }
+
+  btnOpenGSheet?.addEventListener('click', () => {
+    if (gsheetModal) gsheetModal.classList.add('active');
+    loadGSheetConfig();
+  });
+
+  btnCloseGSheet?.addEventListener('click', () => {
+    if (gsheetModal) gsheetModal.classList.remove('active');
+  });
+
+  gsheetModal?.addEventListener('click', (e) => {
+    if (e.target === gsheetModal) gsheetModal.classList.remove('active');
+  });
+
+  // Lưu cấu hình URL Webhook
+  btnSave?.addEventListener('click', async () => {
+    const webhookUrl = (gsheetInput?.value || '').trim();
+    hideAlert();
+    btnSave.disabled = true;
+    btnSave.innerText = 'Đang lưu...';
+
+    try {
+      const res = await fetch('/api/admin/google-sheet-config', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ webhookUrl })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showAlert('Đã lưu cấu hình Google Sheet Webhook thành công!', true);
+        if (statusBadge) {
+          if (data.configured) {
+            statusBadge.style.background = '#ecfdf5';
+            statusBadge.style.color = '#047857';
+            statusBadge.innerText = '✓ Đang hoạt động';
+          } else {
+            statusBadge.style.background = '#fef2f2';
+            statusBadge.style.color = '#b91c1c';
+            statusBadge.innerText = '⚠️ Chưa kết nối';
+          }
+        }
+      } else {
+        showAlert(data.message || 'Lỗi khi lưu cấu hình.', false);
+      }
+    } catch (err) {
+      showAlert('Lỗi kết nối máy chủ khi lưu cấu hình.', false);
+    } finally {
+      btnSave.disabled = false;
+      btnSave.innerText = '💾 Lưu Cấu Hình';
+    }
+  });
+
+  // Kiểm tra kết nối Webhook (Test Ping)
+  btnTest?.addEventListener('click', async () => {
+    const webhookUrl = (gsheetInput?.value || '').trim();
+    if (!webhookUrl) {
+      showAlert('Vui lòng dán liên kết Google Apps Script Webhook URL trước khi kiểm tra.', false);
+      return;
+    }
+
+    hideAlert();
+    btnTest.disabled = true;
+    btnTest.innerText = '⏳ Đang kiểm tra...';
+
+    try {
+      const res = await fetch('/api/admin/test-google-sheet', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ webhookUrl })
+      });
+      const data = await res.json();
+      if (data.success) {
+        const detailMsg = data.data?.sheetName ? ` (${data.data.sheetName})` : '';
+        showAlert(`Kết nối thành công tới Google Sheet${detailMsg}! Dịch vụ hoạt động hoàn hảo.`, true);
+        if (statusBadge) {
+          statusBadge.style.background = '#ecfdf5';
+          statusBadge.style.color = '#047857';
+          statusBadge.innerText = '✓ Kết nối tốt';
+        }
+      } else {
+        showAlert(data.message || 'Kiểm tra thất bại. Vui lòng kiểm tra lại URL.', false);
+      }
+    } catch (err) {
+      showAlert('Lỗi khi kiểm tra kết nối tới Google Sheet: ' + err.message, false);
+    } finally {
+      btnTest.disabled = false;
+      btnTest.innerText = '🧪 Kiểm Tra Kết Nối';
+    }
+  });
+
+  // Đồng bộ toàn bộ dữ liệu khảo sát sang Google Sheet
+  btnSyncAll?.addEventListener('click', async () => {
+    const webhookUrl = (gsheetInput?.value || '').trim();
+    if (!webhookUrl) {
+      showAlert('Vui lòng dán và lưu Webhook URL trước khi đồng bộ dữ liệu.', false);
+      return;
+    }
+
+    if (!confirm('Bạn có chắc chắn muốn đẩy toàn bộ phiếu khảo sát hiện có sang Google Sheet?')) {
+      return;
+    }
+
+    hideAlert();
+    btnSyncAll.disabled = true;
+    btnSyncAll.innerText = '⏳ Đang đồng bộ...';
+
+    try {
+      const res = await fetch('/api/admin/sync-google-sheet', {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      if (data.success) {
+        showAlert(`Đã đồng bộ thành công ${data.count || 0} phiếu sang Google Sheet!`, true);
+      } else {
+        showAlert(data.message || 'Lỗi khi đồng bộ dữ liệu.', false);
+      }
+    } catch (err) {
+      showAlert('Lỗi máy chủ khi đồng bộ: ' + err.message, false);
+    } finally {
+      btnSyncAll.disabled = false;
+      btnSyncAll.innerText = '🚀 Đồng Bộ Toàn Bộ Phiếu Ngay';
+    }
+  });
+
+  // Sao chép mã Google Apps Script
+  btnCopyScript?.addEventListener('click', async () => {
+    btnCopyScript.disabled = true;
+    btnCopyScript.innerText = '⏳ Đang tải mã...';
+
+    try {
+      const res = await fetch('/api/admin/google-sheet-script', {
+        headers: getAuthHeaders()
+      });
+      const code = await res.text();
+      await navigator.clipboard.writeText(code);
+      btnCopyScript.innerText = '✓ Đã sao chép!';
+      showAlert('Đã sao chép mã Google Script vào bộ nhớ tạm. Giờ bạn chỉ cần mở Google Sheet ➔ Tiện ích mở rộng ➔ Apps Script và DÁN vào!', true);
+    } catch (err) {
+      console.warn('Lỗi sao chép qua clipboard API:', err);
+      showAlert('Không thể tự động sao chép. Bạn có thể mở file GOOGLE_SHEET_APPS_SCRIPT.js trong thư mục để sao chép.', false);
+      btnCopyScript.innerText = '📋 Thử lại';
+    } finally {
+      setTimeout(() => {
+        btnCopyScript.disabled = false;
+        btnCopyScript.innerText = '📋 Sao chép mã Google Script';
+      }, 3000);
+    }
+  });
 }

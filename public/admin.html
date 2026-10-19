@@ -30,6 +30,9 @@
     </div>
 
     <div class="navbar-actions">
+      <button type="button" class="btn-outline" id="btn-open-gsheet" style="color: #047857; border-color: #6ee7b7; background: #ecfdf5; font-weight: 600;" title="Tự động đồng bộ số liệu sang Google Sheets theo thời gian thực">
+        📊 Đồng Bộ Google Sheet
+      </button>
       <button type="button" class="btn-outline" id="btn-open-qr">
         📱 Mã QR Khảo Sát
       </button>
@@ -403,6 +406,78 @@
       </div>
     </div>
   </div>
+
+  <!-- GOOGLE SHEETS CLOUD SYNC MODAL OVERLAY -->
+  <div class="modal-overlay" id="gsheet-modal">
+    <div class="modal-content" style="max-width: 620px;">
+      <button class="modal-close-btn" id="btn-close-gsheet" title="Đóng">✕</button>
+      
+      <div style="text-align: left;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 24px;">📊</span>
+            <div>
+              <h3 style="margin: 0; font-size: 17px; color: #0f766e; font-weight: 700;">Đồng Bộ Đám Mây Google Sheets</h3>
+              <p style="margin: 2px 0 0; font-size: 12px; color: #64748b;">Tự động lưu phiếu theo thời gian thực sang bảng tính Google Drive</p>
+            </div>
+          </div>
+          <span id="gsheet-status-badge" style="font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 9999px; background: #f1f5f9; color: #64748b;">
+            ⏳ Đang kiểm tra...
+          </span>
+        </div>
+
+        <!-- Trạng thái kết nối -->
+        <div id="gsheet-alert-box" style="display: none; padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 14px; line-height: 1.5;"></div>
+
+        <!-- Cấu hình Webhook URL -->
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 13px; font-weight: 700; color: #334155; margin-bottom: 6px;">
+            🔗 Google Apps Script Webhook URL:
+          </label>
+          <input type="url" id="gsheet-webhook-input" class="form-input" style="width: 100%; box-sizing: border-box; font-family: monospace; font-size: 12.5px; padding: 9px 12px; border-radius: 6px; border: 1px solid #cbd5e1;" placeholder="https://script.google.com/macros/s/AKfycb.../exec" />
+          <p style="font-size: 11.5px; color: #64748b; margin: 4px 0 0;">
+            * Mỗi khi có nhân viên nộp bài trên điện thoại hoặc máy tính, hệ thống sẽ tự động gửi 1 hàng mới vào Google Sheet của bạn.
+          </p>
+        </div>
+
+        <!-- Các nút hành động chính -->
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px dashed #cbd5e1;">
+          <button type="button" class="btn-action-primary" id="btn-save-gsheet" style="padding: 8px 16px; font-size: 13px;">
+            💾 Lưu Cấu Hình
+          </button>
+          <button type="button" class="btn-outline" id="btn-test-gsheet" style="padding: 8px 14px; font-size: 13px;">
+            🧪 Kiểm Tra Kết Nối
+          </button>
+          <button type="button" class="btn-outline" id="btn-sync-all-gsheet" style="padding: 8px 14px; font-size: 13px; color: #0f766e; border-color: #0f766e; background: #f0fdfa;">
+            🚀 Đồng Bộ Toàn Bộ Phiếu Ngay
+          </button>
+        </div>
+
+        <!-- Hướng dẫn 3 bước cực nhanh -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <strong style="font-size: 13px; color: #1e293b;">⚡ Hướng dẫn cài đặt Google Sheet trong 1 phút:</strong>
+            <button type="button" class="btn-outline" id="btn-copy-script" style="font-size: 11.5px; padding: 3px 10px; border-color: #0f766e; color: #0f766e;">
+              📋 Sao chép mã Google Script
+            </button>
+          </div>
+          <ol style="margin: 0; padding-left: 18px; font-size: 12px; color: #475569; line-height: 1.6;">
+            <li>Mở một file Google Sheet mới tại <a href="https://sheet.new" target="_blank" style="color: #0284c7; font-weight: 600;">sheet.new</a></li>
+            <li>Trên menu, chọn <strong>Tiện ích mở rộng (Extensions) ➔ Apps Script</strong>.</li>
+            <li>Xóa code cũ, bấm nút <strong>"Sao chép mã"</strong> ở trên và DÁN vào ➔ Bấm <strong>Lưu</strong>.</li>
+            <li>Bấm <strong>Triển khai (Deploy) ➔ Tùy chọn triển khai mới (New deployment)</strong>:
+              <ul style="margin: 2px 0; padding-left: 16px;">
+                <li>Loại: <em>Ứng dụng web (Web app)</em></li>
+                <li>Ai có quyền truy cập: Chọn <strong>Bất kỳ ai (Anyone)</strong></li>
+              </ul>
+            </li>
+            <li>Bấm <strong>Triển khai</strong> ➔ Copy <strong>URL ứng dụng web</strong> và dán vào ô bên trên!</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
 
   <script src="vendor/chart.umd.min.js"></script>
   <script src="vendor/qrcode.min.js"></script>

@@ -8,6 +8,7 @@ const XLSX = require('xlsx');
 
 const SURVEY_CONFIG = require('./questions');
 const db = require('./db');
+const googleSheetSync = require('./googleSheetSync');
 
 const isServerless = Boolean(
   process.env.VERCEL === '1' ||
@@ -115,7 +116,8 @@ app.get('/api/config', (req, res) => {
     networkUrl: `http://${primaryIp}:${PORT}`,
     localUrl: `http://localhost:${PORT}`,
     tunnelUrl: process.env.TUNNEL_URL || 'https://violation-flush-wma-bikini.trycloudflare.com',
-    engine: isServerless ? 'SQLite Serverless (/tmp)' : 'SQLite WAL Mode (Enterprise ACID)'
+    engine: isServerless ? 'SQLite Serverless (/tmp)' : 'SQLite WAL Mode (Enterprise ACID)',
+    googleSheetConnected: Boolean(googleSheetSync.getWebhookUrl())
   });
 });
 
@@ -208,6 +210,11 @@ app.post('/api/submit', (req, res) => {
 
     // Lưu trực tiếp vào SQLite chuẩn ACID (WAL mode, non-blocking, atomic sequential ID)
     const saved = db.insertSurvey(submission);
+
+    // Tự động đẩy ngầm (Real-time Async) sang Google Sheet (nếu đã cấu hình)
+    googleSheetSync.syncSurveyAsync(saved).catch(err => {
+      console.warn('[GoogleSheetSync Error]:', err.message);
+    });
 
     res.json({
       success: true,
@@ -684,6 +691,73 @@ app.post('/api/clear-data', requireAdmin, (req, res) => {
     res.status(500).json({ success: false, message: 'Lỗi khi xóa dữ liệu.', error: err.message });
   }
 });
+
+// ==========================================
+// GOOGLE SHEETS CLOUD SYNC APIs (Admin only)
+// ==========================================
+
+// Lấy thông tin cấu hình Google Sheet hiện tại
+app.get('/api/admin/google-sheet-config', requireAdmin, (req, res) => {
+  const webhookUrl = googleSheetSync.getWebhookUrl();
+  res.json({
+    success: true,
+    configured: Boolean(webhookUrl),
+    webhookUrl: webhookUrl || '',
+    totalSurveys: db.getSurveyCount()
+  });
+});
+
+// Lưu cấu hình Google Sheet Webhook URL
+app.post('/api/admin/google-sheet-config', requireAdmin, (req, res) => {
+  const { webhookUrl } = req.body || {};
+  googleSheetSync.setWebhookUrl(webhookUrl || '');
+  res.json({
+    success: true,
+    configured: Boolean(webhookUrl && webhookUrl.trim()),
+    message: 'Đã lưu cấu hình Google Sheet Webhook thành công!'
+  });
+});
+
+// Kiểm tra kết nối tới Google Sheet (Test Ping)
+app.post('/api/admin/test-google-sheet', requireAdmin, async (req, res) => {
+  try {
+    const { webhookUrl } = req.body || {};
+    const result = await googleSheetSync.testWebhook(webhookUrl);
+    res.json({ success: true, data: result, message: 'Kết nối thành công tới Google Sheet!' });
+  } catch (err) {
+    console.error('Google Sheet Test Error:', err);
+    res.status(400).json({ success: false, message: err.message || 'Không thể kết nối đến Google Sheet Webhook.' });
+  }
+});
+
+// Đồng bộ toàn bộ dữ liệu khảo sát sang Google Sheet ngay lập tức
+app.post('/api/admin/sync-google-sheet', requireAdmin, async (req, res) => {
+  try {
+    const allSurveys = db.getAllSurveys();
+    const result = await googleSheetSync.syncAllSurveys(allSurveys);
+    res.json({
+      success: true,
+      count: allSurveys.length,
+      data: result,
+      message: `Đã đồng bộ ${allSurveys.length} phiếu sang Google Sheet thành công!`
+    });
+  } catch (err) {
+    console.error('Google Sheet Sync All Error:', err);
+    res.status(500).json({ success: false, message: err.message || 'Lỗi khi đồng bộ sang Google Sheet.' });
+  }
+});
+
+// Tải nội dung Google Apps Script mẫu để sao chép
+app.get('/api/admin/google-sheet-script', requireAdmin, (req, res) => {
+  const scriptPath = path.join(__dirname, 'GOOGLE_SHEET_APPS_SCRIPT.js');
+  if (fs.existsSync(scriptPath)) {
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    return res.sendFile(scriptPath);
+  }
+  res.status(404).send('File script không tồn tại.');
+});
+
+
 
 if (!isServerless) {
   const server = app.listen(PORT, () => {
