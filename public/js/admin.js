@@ -181,45 +181,19 @@ function updateQrDisplay() {
     btnTunnel.style.display = hasTunnel ? 'inline-block' : 'none';
   }
 
+  if (noteBox) noteBox.style.display = 'none';
+  const urlBox = document.getElementById('qr-url-box');
+  if (urlBox) urlBox.style.display = 'none';
+
   if (systemConfig.isServerless) {
     if (btnTunnel) btnTunnel.style.display = 'none';
     if (btnLocal) btnLocal.style.display = 'none';
-    if (label) label.innerText = 'Đường dẫn khảo sát trực tuyến đám mây (Vercel HTTPS 24/7):';
-    if (noteBox) {
-      noteBox.style.background = '#ecfdf5';
-      noteBox.style.borderColor = '#a7f3d0';
-      noteBox.style.borderLeftColor = '#059669';
-      noteBox.style.color = '#065f46';
-      noteBox.innerHTML = `<strong>☁️ HỆ THỐNG ĐANG CHẠY TRÊN ĐÁM MÂY (VERCEL 24/7):</strong><br>
-• Mã QR này dùng vĩnh viễn, quét được trên 100% điện thoại (4G, 5G, Wi-Fi bất kỳ).<br>
-• Không cần bật máy tính, nhân viên quét mã ở bất cứ đâu cũng làm bài được!<br>
-• Mọi kết quả tự động đồng bộ sang Google Sheets theo thời gian thực.`;
-    }
   } else if (isTunnel) {
     if (btnTunnel) { btnTunnel.className = 'btn-action-primary'; }
     if (btnLocal) { btnLocal.className = 'btn-outline'; }
-    if (label) label.innerText = 'Đường dẫn khảo sát trực tuyến (Toàn diện 4G/5G/Wi-Fi):';
-    if (noteBox) {
-      noteBox.style.background = '#ecfdf5';
-      noteBox.style.borderColor = '#a7f3d0';
-      noteBox.style.borderLeftColor = '#059669';
-      noteBox.style.color = '#065f46';
-      noteBox.innerHTML = '<strong>✅ KẾT NỐI TOÀN DIỆN ĐÃ BẬT:</strong> Mã QR này quét được ngay lập tức trên 100% điện thoại (kể cả bật 4G, 5G hay bất kỳ mạng Wi-Fi nào)!';
-    }
   } else {
     if (btnTunnel) { btnTunnel.className = 'btn-outline'; }
     if (btnLocal) { btnLocal.className = 'btn-action-primary'; }
-    if (label) label.innerText = 'Đường dẫn khảo sát mạng nội bộ (Wi-Fi cơ quan):';
-    if (noteBox) {
-      noteBox.style.background = '#f0fdfa';
-      noteBox.style.borderColor = '#99f6e4';
-      noteBox.style.borderLeftColor = '#0f766e';
-      noteBox.style.color = '#134e4a';
-      noteBox.innerHTML = `<strong>📶 KẾT NỐI WI-FI NỘI BỘ:</strong><br>
-• Địa chỉ máy chủ: <b style="color: #0f766e;">${activeUrl}</b><br>
-• <b>Lưu ý trên điện thoại:</b> Kết nối điện thoại vào <b>cùng mạng Wi-Fi</b> với máy tính này (tắt 4G/5G).<br>
-• Nếu chưa chạy máy chủ: Hãy nhấp đúp vào tệp <b>CHAY_KHAO_SAT.bat</b> để khởi động hệ thống.`;
-    }
   }
 
 
@@ -864,22 +838,24 @@ function setupEventListeners() {
   // Copy QR URL button
   document.getElementById('btn-copy-qr-url')?.addEventListener('click', async () => {
     const urlInput = document.getElementById('qr-survey-url-input');
-    if (!urlInput || !urlInput.value) return;
+    const url = urlInput?.value || window.location.origin;
+    if (!url) return;
+
     try {
-      await navigator.clipboard.writeText(urlInput.value);
-      const toast = document.getElementById('copy-toast');
-      if (toast) {
-        toast.style.display = 'inline';
-        setTimeout(() => { toast.style.display = 'none'; }, 2500);
-      }
+      await navigator.clipboard.writeText(url);
     } catch (_) {
-      urlInput.select();
+      const tempInput = document.createElement('input');
+      tempInput.value = url;
+      document.body.appendChild(tempInput);
+      tempInput.select();
       document.execCommand('copy');
-      const toast = document.getElementById('copy-toast');
-      if (toast) {
-        toast.style.display = 'inline';
-        setTimeout(() => { toast.style.display = 'none'; }, 2500);
-      }
+      document.body.removeChild(tempInput);
+    }
+
+    const toast = document.getElementById('copy-toast');
+    if (toast) {
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 2500);
     }
   });
 

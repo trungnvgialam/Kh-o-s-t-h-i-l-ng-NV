@@ -383,35 +383,28 @@
           </button>
         </div>
 
-        <!-- Dynamic IP & Copy URL box -->
-        <div style="margin: 10px 0 14px; text-align: left;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-            <label style="font-size: 12px; font-weight: 600; color: #475569;" id="qr-url-label">
-              Đường dẫn khảo sát trực tuyến:
-            </label>
-            <span id="copy-toast" style="font-size: 11px; font-weight: 600; color: #059669; display: none;">✓ Đã sao chép!</span>
-          </div>
-          <div style="display: flex; gap: 8px;">
-            <input type="text" id="qr-survey-url-input" class="form-input" style="font-family: monospace; font-size: 13px; font-weight: 600; color: #0f766e; padding: 8px 10px; flex: 1; background: #f8fafc;" readonly />
-            <button type="button" class="btn-outline" id="btn-copy-qr-url" title="Sao chép liên kết gửi Zalo/Email" style="padding: 8px 12px; white-space: nowrap;">
-              📋 Sao chép
-            </button>
-          </div>
+        <!-- Dynamic IP & Copy URL box (Hidden as requested) -->
+        <input type="hidden" id="qr-survey-url-input" />
+        <div id="qr-url-box" style="display: none !important;">
+          <label id="qr-url-label"></label>
         </div>
 
-        <div id="qr-connection-note" style="background: #ecfdf5; border: 1px solid #a7f3d0; border-left: 4px solid #059669; padding: 10px 12px; border-radius: 6px; font-size: 12px; color: #065f46; line-height: 1.5; text-align: left; margin-bottom: 14px;">
-          <strong>✅ KẾT NỐI TOÀN DIỆN ĐÃ BẬT:</strong> Mã QR này quét được ngay lập tức trên 100% điện thoại (kể cả bật 4G, 5G hay bất kỳ mạng Wi-Fi nào), không bị tường lửa chặn!
-        </div>
+        <!-- Connection Note Box (Hidden as requested) -->
+        <div id="qr-connection-note" style="display: none !important;"></div>
       </div>
 
-      <div style="display: flex; gap: 10px; justify-content: center;">
+      <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 14px;">
         <button type="button" class="btn-action-primary" id="btn-print-qr">
           🖨️ In Áp Phích Dán Tại Khoa
+        </button>
+        <button type="button" class="btn-outline" id="btn-copy-qr-url" title="Sao chép liên kết gửi Zalo/Email">
+          📋 Sao Chép Link Khảo Sát
         </button>
         <button type="button" class="btn-outline" id="btn-open-direct-url">
           🌐 Mở Trực Tiếp Trên Web
         </button>
       </div>
+      <div id="copy-toast" style="font-size: 12px; font-weight: 600; color: #059669; display: none; margin-top: 8px; text-align: center;">✓ Đã sao chép liên kết khảo sát thành công!</div>
     </div>
   </div>
 
