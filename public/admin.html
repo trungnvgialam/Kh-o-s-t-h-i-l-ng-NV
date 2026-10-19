@@ -14,6 +14,34 @@
       if (!token) {
         window.location.replace('login.html');
       }
+
+      // Khôi phục ngay lập tức số lượng nhân viên mục tiêu gần nhất từ localStorage khi F5
+      function restoreTargetImmediately() {
+        try {
+          var savedTarget = localStorage.getItem('admin_target_respondents');
+          var t = (savedTarget && parseInt(savedTarget, 10) > 0) ? parseInt(savedTarget, 10) : 350;
+          var elBrand = document.getElementById('brand-target-label');
+          if (elBrand) elBrand.innerText = t;
+          var elTitle = document.getElementById('target-title-text');
+          if (elTitle) elTitle.innerText = 'Tiến Độ Thu Thập Phiếu Khảo Sát (Mục tiêu: ' + t + ' NV)';
+          var elUnit = document.getElementById('kpi-target-unit');
+          if (elUnit) elUnit.innerText = '/ ' + t + ' NV';
+          var elCount = document.getElementById('target-count-label');
+          if (elCount) {
+            var m = elCount.innerText.match(/^(\d+)/);
+            var curr = m ? m[1] : '0';
+            elCount.innerText = curr + ' / ' + t + ' Phiếu';
+          }
+          var elInput = document.getElementById('target-input');
+          if (elInput) elInput.value = t;
+        } catch (_) {}
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', restoreTargetImmediately);
+      } else {
+        restoreTargetImmediately();
+      }
     })();
   </script>
 </head>
@@ -25,7 +53,7 @@
       <div class="brand-icon">🏥</div>
       <div class="brand-text">
         <h1>Báo Cáo Sự Hài Lòng Nhân Viên Y Tế</h1>
-        <p>Quy mô: <span id="brand-target-label">500</span> Cán bộ y tế • Tiêu chí chất lượng Bệnh viện - Bộ Y tế</p>
+        <p>Quy mô: <span id="brand-target-label">350</span> Cán bộ y tế • Tiêu chí chất lượng Bệnh viện - Bộ Y tế</p>
       </div>
     </div>
 
@@ -67,7 +95,7 @@
     <section class="progress-target-card">
       <div class="target-info">
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
-          <h2 id="target-title-text" style="margin: 0;">Tiến Độ Thu Thập Phiếu Khảo Sát (Mục tiêu: 500 NV)</h2>
+          <h2 id="target-title-text" style="margin: 0;">Tiến Độ Thu Thập Phiếu Khảo Sát (Mục tiêu: 350 NV)</h2>
           <button type="button" class="btn-outline" id="btn-edit-target" style="padding: 3px 8px; font-size: 11.5px; border-color: #38bdf8; color: #0284c7; background: #f0f9ff; cursor: pointer; border-radius: 6px; font-weight: 600;" title="Nhấp để tùy chỉnh số lượng nhân viên y tế mục tiêu">
             ⚙️ Đổi mục tiêu
           </button>
@@ -76,7 +104,7 @@
       </div>
       <div class="target-bar-wrap">
         <div class="target-numbers">
-          <span id="target-count-label">0 / 500 Phiếu</span>
+          <span id="target-count-label">0 / 350 Phiếu</span>
           <span id="target-pct-label" style="color: #38bdf8;">0% Mục tiêu</span>
         </div>
         <div class="target-track">
