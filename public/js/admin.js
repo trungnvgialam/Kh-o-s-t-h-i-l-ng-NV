@@ -39,6 +39,12 @@ function getAuthHeaders() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+  // 0. Khôi phục ngay lập tức số lượng nhân viên mục tiêu từ localStorage khi F5
+  const savedTarget = localStorage.getItem('admin_target_respondents');
+  if (savedTarget && parseInt(savedTarget, 10) > 0) {
+    applyTargetToDom(parseInt(savedTarget, 10));
+  }
+
   const token = getAdminToken();
   if (!token) {
     window.location.replace('login.html');
@@ -150,6 +156,70 @@ function updateExportExcelLink() {
   }
 }
 
+/**
+ * Cập nhật số lượng nhân viên y tế mục tiêu lên toàn bộ giao diện một cách đồng bộ
+ */
+function applyTargetToDom(targetVal, currentCount, pct) {
+  const targetTotal = parseInt(targetVal, 10);
+  if (isNaN(targetTotal) || targetTotal <= 0) return;
+
+  // 1. Nhãn quy mô trên navbar
+  const brandTarget = document.getElementById('brand-target-label');
+  if (brandTarget) brandTarget.innerText = targetTotal;
+
+  // 2. Tiêu đề thanh tiến độ
+  const targetTitle = document.getElementById('target-title-text');
+  if (targetTitle) targetTitle.innerText = `Tiến Độ Thu Thập Phiếu Khảo Sát (Mục tiêu: ${targetTotal} NV)`;
+
+  // 3. Đơn vị trong KPI Card
+  const kpiTargetUnit = document.getElementById('kpi-target-unit');
+  if (kpiTargetUnit) kpiTargetUnit.innerText = `/ ${targetTotal} NV`;
+
+  // 4. Ô nhập trong Modal (nếu người dùng không đang tự gõ)
+  const targetInput = document.getElementById('target-input');
+  if (targetInput && document.activeElement !== targetInput) {
+    targetInput.value = targetTotal;
+  }
+
+  // 5. Cập nhật nhãn số phiếu nộp nếu có
+  const countLabel = document.getElementById('target-count-label');
+  if (countLabel) {
+    if (currentCount !== null && currentCount !== undefined) {
+      countLabel.innerText = `${currentCount} / ${targetTotal} Phiếu`;
+    } else {
+      const match = countLabel.innerText.match(/^(\d+)/);
+      const curr = match ? match[1] : '0';
+      countLabel.innerText = `${curr} / ${targetTotal} Phiếu`;
+    }
+  }
+
+  // 6. Cập nhật thanh tiến độ %
+  if (pct !== null && pct !== undefined) {
+    const fill = document.getElementById('target-fill');
+    const pctLabel = document.getElementById('target-pct-label');
+    if (fill) fill.style.width = `${pct}%`;
+    if (pctLabel) pctLabel.innerText = `${pct}% Mục tiêu`;
+  }
+}
+
+/**
+ * Tự động đồng bộ số mục tiêu lên máy chủ nếu phát hiện máy chủ vừa bị reset/cold-start
+ */
+async function syncTargetToServer(targetVal) {
+  try {
+    const token = getAdminToken();
+    if (!token) return;
+    await fetch('/api/admin/target-config', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ target: targetVal })
+    });
+  } catch (_) {}
+}
+
 async function initDashboard() {
   await loadSystemConfig();
   await loadDashboardStats();
@@ -161,8 +231,20 @@ let currentQrMode = 'local'; // Mặc định là 'local' (IP mạng Wi-Fi thự
 // 1. Load System Config & QR Code
 async function loadSystemConfig() {
   try {
-    const res = await fetch('/api/config');
+    const cachedTarget = localStorage.getItem('admin_target_respondents') || '';
+    const configUrl = '/api/config' + (cachedTarget ? `?target=${encodeURIComponent(cachedTarget)}` : '');
+    const res = await fetch(configUrl, {
+      headers: {
+        'X-Target-Respondents': cachedTarget
+      }
+    });
     systemConfig = await res.json();
+
+    if (systemConfig && systemConfig.target) {
+      if (!localStorage.getItem('admin_target_respondents')) {
+        localStorage.setItem('admin_target_respondents', systemConfig.target);
+      }
+    }
 
     updateQrDisplay();
   } catch (err) {
@@ -241,14 +323,19 @@ async function loadDashboardStats() {
   // Đồng bộ đường dẫn xuất Excel
   updateExportExcelLink();
 
+  const cachedTarget = localStorage.getItem('admin_target_respondents') || '';
   let url = `/api/stats?department=${encodeURIComponent(deptFilter)}`;
   if (startDate) url += `&startDate=${encodeURIComponent(startDate)}`;
   if (endDate) url += `&endDate=${encodeURIComponent(endDate)}`;
   if (period) url += `&period=${encodeURIComponent(period)}`;
+  if (cachedTarget) url += `&target=${encodeURIComponent(cachedTarget)}`;
 
   try {
     const res = await fetch(url, {
-      headers: { 'Authorization': 'Bearer ' + getAdminToken() }
+      headers: {
+        'Authorization': 'Bearer ' + getAdminToken(),
+        'X-Target-Respondents': cachedTarget
+      }
     });
     if (res.status === 401) {
       sessionStorage.removeItem('admin_token');
@@ -273,28 +360,25 @@ async function loadDashboardStats() {
 
 // 3. Update KPI Cards & Progress
 function updateKpiCards(stats) {
-  // Target Progress Bar
-  const targetTotal = stats.target || 500;
+  // Lấy target từ stats, nếu stats không có hoặc stats là 500 mặc định trong khi localStorage có số khác 500 thì ưu tiên số gần nhất
+  const cachedTarget = parseInt(localStorage.getItem('admin_target_respondents'), 10);
+  let targetTotal = parseInt(stats.target, 10);
+
+  if (isNaN(targetTotal) || targetTotal <= 0) {
+    targetTotal = (!isNaN(cachedTarget) && cachedTarget > 0) ? cachedTarget : 350;
+  } else if (targetTotal === 500 && !isNaN(cachedTarget) && cachedTarget > 0 && cachedTarget !== 500) {
+    targetTotal = cachedTarget;
+    syncTargetToServer(cachedTarget);
+  }
+
+  // Luôn lưu lại vào localStorage để lần F5 tiếp theo vẫn giữ nguyên 100%
+  localStorage.setItem('admin_target_respondents', targetTotal);
+
   const currentCount = stats.totalCount || 0;
-  const pct = Math.min(100, stats.completionRate || 0);
+  const pct = targetTotal > 0 ? Math.min(100, Number(((currentCount / targetTotal) * 100).toFixed(1))) : 0;
 
-  const fill = document.getElementById('target-fill');
-  const countLabel = document.getElementById('target-count-label');
-  const pctLabel = document.getElementById('target-pct-label');
-
-  if (fill) fill.style.width = `${pct}%`;
-  if (countLabel) countLabel.innerText = `${currentCount} / ${targetTotal} Phiếu`;
-  if (pctLabel) pctLabel.innerText = `${pct}% Mục tiêu`;
-
-  // Cập nhật nhãn quy mô trên toàn giao diện
-  const brandTarget = document.getElementById('brand-target-label');
-  if (brandTarget) brandTarget.innerText = targetTotal;
-
-  const targetTitle = document.getElementById('target-title-text');
-  if (targetTitle) targetTitle.innerText = `Tiến Độ Thu Thập Phiếu Khảo Sát (Mục tiêu: ${targetTotal} NV)`;
-
-  const kpiTargetUnit = document.getElementById('kpi-target-unit');
-  if (kpiTargetUnit) kpiTargetUnit.innerText = `/ ${targetTotal} NV`;
+  // Áp dụng ngay vào toàn bộ giao diện
+  applyTargetToDom(targetTotal, currentCount, pct);
 
   // KPI 1: Total
   const kpiTotal = document.getElementById('kpi-total-responses');
@@ -925,8 +1009,11 @@ function setupTargetModalEvents() {
 
   btnEditTarget?.addEventListener('click', () => {
     hideTargetAlert();
-    if (targetInput && systemConfig) {
-      targetInput.value = systemConfig.target || 500;
+    const saved = localStorage.getItem('admin_target_respondents');
+    if (targetInput) {
+      targetInput.value = (saved && parseInt(saved, 10) > 0) 
+        ? saved 
+        : (systemConfig?.target || 350);
     }
     if (targetModal) targetModal.classList.add('active');
   });
@@ -969,7 +1056,11 @@ function setupTargetModalEvents() {
       const data = await res.json();
       if (data.success) {
         showTargetAlert(data.message, true);
+        // Lưu vĩnh viễn vào localStorage của trình duyệt
+        localStorage.setItem('admin_target_respondents', data.target);
         if (systemConfig) systemConfig.target = data.target;
+        applyTargetToDom(data.target);
+
         setTimeout(() => {
           if (targetModal) targetModal.classList.remove('active');
           loadDashboardStats();
