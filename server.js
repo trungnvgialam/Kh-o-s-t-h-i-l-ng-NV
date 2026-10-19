@@ -159,6 +159,12 @@ function readSurveys() {
 
 // API: Get survey config & system status
 app.get('/api/config', (req, res) => {
+  const clientTarget = req.headers['x-target-respondents'] || req.query.target;
+  if (clientTarget) {
+    settingsManager.syncClientTarget(clientTarget);
+  }
+  const currentTarget = settingsManager.getTargetRespondents();
+
   const localIps = getLocalIpAddresses();
   const primaryIp = localIps.length > 0 ? localIps[0] : 'localhost';
   const hostHeader = req.headers.host;
@@ -166,9 +172,12 @@ app.get('/api/config', (req, res) => {
   const currentOrigin = hostHeader ? `${protocol}://${hostHeader}` : `http://${primaryIp}:${PORT}`;
   
   res.json({
-    config: SURVEY_CONFIG,
+    config: {
+      ...SURVEY_CONFIG,
+      targetRespondents: currentTarget
+    },
     totalCount: db.getSurveyCount(),
-    target: settingsManager.getTargetRespondents(),
+    target: currentTarget,
     localIps,
     networkUrl: isServerless ? currentOrigin : `http://${primaryIp}:${PORT}`,
     localUrl: isServerless ? currentOrigin : `http://localhost:${PORT}`,
@@ -612,6 +621,14 @@ app.get('/api/stats', requireAdmin, (req, res) => {
   const startDate = req.query.startDate || null;
   const endDate = req.query.endDate || null;
   const period = req.query.period || 'all';
+
+  // Hỗ trợ đồng bộ mục tiêu từ client header hoặc query
+  const headerTarget = req.headers['x-target-respondents'];
+  const queryTarget = req.query.target;
+  const clientTarget = headerTarget || queryTarget;
+  if (clientTarget) {
+    settingsManager.syncClientTarget(clientTarget);
+  }
 
   const surveys = db.getAllSurveys(filterDept, startDate, endDate);
   const stats = computeStatistics(surveys, filterDept);

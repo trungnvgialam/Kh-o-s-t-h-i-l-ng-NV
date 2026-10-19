@@ -17,6 +17,7 @@ const isServerless = Boolean(
   process.env.NOW_REGION
 );
 
+const ROOT_SETTINGS_FILE = path.join(__dirname, 'data', 'settings.json');
 const DATA_DIR = isServerless ? path.join(os.tmpdir(), 'khao-sat-data') : path.join(__dirname, 'data');
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 
@@ -25,6 +26,12 @@ function getAllSettings() {
     if (fs.existsSync(SETTINGS_FILE)) {
       const raw = fs.readFileSync(SETTINGS_FILE, 'utf8');
       return JSON.parse(raw);
+    } else if (isServerless && fs.existsSync(ROOT_SETTINGS_FILE)) {
+      // Khi serverless cold-start, seed từ file settings.json gốc trong bundle
+      const raw = fs.readFileSync(ROOT_SETTINGS_FILE, 'utf8');
+      const seedData = JSON.parse(raw);
+      saveAllSettings(seedData);
+      return seedData;
     }
   } catch (_) {}
   return {};
@@ -70,6 +77,22 @@ function setTargetRespondents(newTarget) {
   settings.updatedAt = new Date().toISOString();
   saveAllSettings(settings);
   return val;
+}
+
+/**
+ * Tự động đồng bộ mục tiêu từ client nếu server đang ở giá trị mặc định (500)
+ */
+function syncClientTarget(clientTarget) {
+  const val = parseInt(clientTarget, 10);
+  if (!isNaN(val) && val > 0 && val <= 1000000) {
+    const current = getTargetRespondents();
+    if (current === 500 && val !== 500) {
+      setTargetRespondents(val);
+      return val;
+    }
+    return current;
+  }
+  return getTargetRespondents();
 }
 
 /**
@@ -161,6 +184,7 @@ module.exports = {
   getAllSettings,
   getTargetRespondents,
   setTargetRespondents,
+  syncClientTarget,
   getGoogleSheetWebhookUrl,
   setGoogleSheetWebhookUrl,
   getAdminPassword,
