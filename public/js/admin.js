@@ -1223,9 +1223,21 @@ function setupGoogleSheetSyncEvents() {
       });
       const data = await res.json();
       if (data.success) {
-        if (gsheetInput) gsheetInput.value = data.webhookUrl || '';
+        const localSaved = localStorage.getItem('admin_gsheet_webhook') || '';
+        const effectiveUrl = (data.webhookUrl || localSaved || '').trim();
+        if (gsheetInput) gsheetInput.value = effectiveUrl;
+
+        // Nếu client có URL nhưng server chưa có (do Vercel cold-start), tự động đồng bộ lên server
+        if (localSaved && !data.webhookUrl) {
+          fetch('/api/admin/google-sheet-config', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ webhookUrl: localSaved })
+          }).catch(() => {});
+        }
+
         if (statusBadge) {
-          if (data.configured) {
+          if (data.configured || effectiveUrl) {
             statusBadge.style.background = '#ecfdf5';
             statusBadge.style.color = '#047857';
             statusBadge.innerText = '✓ Đang hoạt động';
@@ -1262,6 +1274,12 @@ function setupGoogleSheetSyncEvents() {
     btnSave.innerText = 'Đang lưu...';
 
     try {
+      if (webhookUrl) {
+        localStorage.setItem('admin_gsheet_webhook', webhookUrl);
+      } else {
+        localStorage.removeItem('admin_gsheet_webhook');
+      }
+
       const res = await fetch('/api/admin/google-sheet-config', {
         method: 'POST',
         headers: getAuthHeaders(),
@@ -1269,7 +1287,7 @@ function setupGoogleSheetSyncEvents() {
       });
       const data = await res.json();
       if (data.success) {
-        showAlert('Đã lưu cấu hình Google Sheet Webhook thành công!', true);
+        showAlert('Đã lưu cấu hình Google Sheet Webhook thành công! Đang tự động kéo dữ liệu...', true);
         if (statusBadge) {
           if (data.configured) {
             statusBadge.style.background = '#ecfdf5';
@@ -1281,6 +1299,9 @@ function setupGoogleSheetSyncEvents() {
             statusBadge.innerText = '⚠️ Chưa kết nối';
           }
         }
+        // Tự động tải lại số liệu và bảng chi tiết ngay
+        await loadDashboardStats(true);
+        await loadResponsesTable(1, true);
       } else {
         showAlert(data.message || 'Lỗi khi lưu cấu hình.', false);
       }
