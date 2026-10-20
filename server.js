@@ -622,8 +622,36 @@ function computeStatistics(surveys, filterDept = 'all') {
   };
 }
 
+// Bộ đệm thời gian đồng bộ dữ liệu từ Google Sheet về SQLite (Tránh gọi Google API quá dồn dập)
+let lastSheetSyncTime = 0;
+const SHEET_SYNC_INTERVAL_MS = 10 * 1000; // 10 giây một lần là tối ưu
+
+async function syncWithGoogleSheetIfConfigured(force = false) {
+  const webhookUrl = settingsManager.getGoogleSheetWebhookUrl();
+  if (!webhookUrl) return;
+
+  const now = Date.now();
+  // Nếu chưa hết chu kỳ và không bị ép buộc (force) và trong SQLite đã có dữ liệu thì không cần tải lại
+  if (!force && (now - lastSheetSyncTime < SHEET_SYNC_INTERVAL_MS) && db.getSurveyCount() > 0) {
+    return;
+  }
+
+  try {
+    const result = await googleSheetSync.fetchAllSurveysFromSheet(webhookUrl);
+    if (result && result.success && Array.isArray(result.surveys)) {
+      lastSheetSyncTime = Date.now();
+      if (result.surveys.length > 0) {
+        db.insertManySurveys(result.surveys);
+        console.log(`[GoogleSheetSync] Đã nạp thành công ${result.surveys.length} phiếu từ Google Sheet vào cơ sở dữ liệu!`);
+      }
+    }
+  } catch (err) {
+    console.warn('[GoogleSheetSync] Bỏ qua lỗi đồng bộ nền Google Sheet:', err.message);
+  }
+}
+
 // API: Get comprehensive statistics (Admin only - Hỗ trợ lọc theo khối & giai đoạn)
-app.get('/api/stats', requireAdmin, (req, res) => {
+app.get('/api/stats', requireAdmin, async (req, res) => {
   const filterDept = req.query.department || 'all';
   const startDate = req.query.startDate || null;
   const endDate = req.query.endDate || null;
@@ -636,6 +664,15 @@ app.get('/api/stats', requireAdmin, (req, res) => {
   if (clientTarget) {
     settingsManager.syncClientTarget(clientTarget);
   }
+
+  // Tự động đồng bộ Webhook URL từ client header/query (cực kỳ quan trọng để giữ cấu hình trên Vercel container)
+  const clientWebhook = req.headers['x-google-sheet-webhook'] || req.query.gsheet_webhook;
+  if (clientWebhook) {
+    settingsManager.syncClientWebhook(clientWebhook);
+  }
+
+  // Tự động đồng bộ dữ liệu từ Google Sheet về SQLite (Nếu đã kết nối Google Sheet)
+  await syncWithGoogleSheetIfConfigured(req.query.force === '1');
 
   const surveys = db.getAllSurveys(filterDept, startDate, endDate);
   const stats = computeStatistics(surveys, filterDept);
@@ -650,13 +687,22 @@ app.get('/api/stats', requireAdmin, (req, res) => {
 });
 
 // API: Get list of responses with pagination & search (Admin only - Hỗ trợ lọc theo khối & giai đoạn)
-app.get('/api/responses', requireAdmin, (req, res) => {
+app.get('/api/responses', requireAdmin, async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 20;
   const search = (req.query.search || '').trim();
   const dept = req.query.department || 'all';
   const startDate = req.query.startDate || null;
   const endDate = req.query.endDate || null;
+
+  // Tự động đồng bộ Webhook URL từ client header/query
+  const clientWebhook = req.headers['x-google-sheet-webhook'] || req.query.gsheet_webhook;
+  if (clientWebhook) {
+    settingsManager.syncClientWebhook(clientWebhook);
+  }
+
+  // Tự động đồng bộ dữ liệu từ Google Sheet về SQLite trước khi lấy danh sách phân trang
+  await syncWithGoogleSheetIfConfigured(req.query.force === '1');
 
   const result = db.getPaginatedResponses({ page, limit, search, department: dept, startDate, endDate });
   res.json(result);
