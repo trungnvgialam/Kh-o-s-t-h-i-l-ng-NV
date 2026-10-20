@@ -859,8 +859,8 @@ function setupEventListeners() {
 
   // Refresh button
   document.getElementById('btn-refresh')?.addEventListener('click', () => {
-    loadDashboardStats();
-    loadResponsesTable(1);
+    loadDashboardStats(true);
+    loadResponsesTable(1, true);
   });
 
   // Clear data button
