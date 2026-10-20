@@ -82,7 +82,7 @@ const COMMITMENT_LABELS = {
 function formatSurveyForSheet(s) {
   return {
     id: s.id,
-    submittedAt: s.submittedAt ? new Date(s.submittedAt).toLocaleString('vi-VN') : '',
+    submittedAt: s.submittedAt ? new Date(s.submittedAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
     department: DEPT_LABELS[s.demographics?.department] || s.demographics?.department || '',
     role: ROLE_LABELS[s.demographics?.role] || s.demographics?.role || '',
     experience: EXP_LABELS[s.demographics?.experience] || s.demographics?.experience || '',

@@ -105,6 +105,31 @@ var REVERSE_MAP = {
   "Dự định chuyển nơi khác": "du_dinh_chuyen"
 };
 
+// Chuẩn hóa mọi định dạng ngày tháng sang ISO 8601 quốc tế (Hỗ trợ định dạng Việt Nam DD/MM/YYYY)
+function parseToIso(val) {
+  if (!val) return new Date().toISOString();
+  if (val instanceof Date) return isNaN(val.getTime()) ? new Date().toISOString() : val.toISOString();
+  var str = String(val).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+    var d = new Date(str);
+    if (!isNaN(d.getTime())) return d.toISOString();
+  }
+  var match = str.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[,\s]+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+  if (match) {
+    var day = parseInt(match[1], 10);
+    var month = parseInt(match[2], 10) - 1;
+    var year = parseInt(match[3], 10);
+    var hour = parseInt(match[4] || 0, 10);
+    var min = parseInt(match[5] || 0, 10);
+    var sec = parseInt(match[6] || 0, 10);
+    // Tính toán theo múi giờ Việt Nam (UTC+7)
+    var d = new Date(Date.UTC(year, month, day, Math.max(0, hour - 7), min, sec));
+    if (!isNaN(d.getTime())) return d.toISOString();
+  }
+  var fallback = new Date(str);
+  return isNaN(fallback.getTime()) ? new Date().toISOString() : fallback.toISOString();
+}
+
 // Chuyển 1 dòng trong Google Sheet thành Object Survey chuẩn
 function rowArrayToSurvey(r) {
   if (!r || !r[0]) return null;
@@ -115,12 +140,7 @@ function rowArrayToSurvey(r) {
   var degreeVal = String(r[6] || "").trim();
   var commitVal = String(r[31] || "").trim();
 
-  var subAt = r[1];
-  if (subAt instanceof Date) {
-    subAt = subAt.toISOString();
-  } else {
-    subAt = String(subAt || new Date().toISOString());
-  }
+  var subAt = parseToIso(r[1]);
 
   return {
     id: String(r[0]).trim(),
@@ -266,6 +286,8 @@ function doPost(e) {
     var survey = data.survey || data;
     var rowValues = surveyToRowArray(survey);
     sheet.appendRow(rowValues);
+    var newRowIdx = sheet.getLastRow();
+    formatRowAppearance(sheet, newRowIdx);
 
     return ContentService.createTextOutput(JSON.stringify({
       success: true,
@@ -285,6 +307,7 @@ function doPost(e) {
 
 // Chuyển đối tượng khảo sát sang mảng 34 cột
 function surveyToRowArray(s) {
+  var a = s.answers || {};
   return [
     s.id || "",
     s.submittedAt || new Date().toLocaleString("vi-VN"),
@@ -294,17 +317,112 @@ function surveyToRowArray(s) {
     s.gender || "",
     s.degree || "",
     
-    s.a1 || 3, s.a2 || 3, s.a3 || 3, s.a4 || 3, s.a5 || 3,
-    s.b1 || 3, s.b2 || 3, s.b3 || 3, s.b4 || 3, s.b5 || 3,
-    s.c1 || 3, s.c2 || 3, s.c3 || 3, s.c4 || 3, s.c5 || 3,
-    s.d1 || 3, s.d2 || 3, s.d3 || 3, s.d4 || 3,
-    s.e1 || 3, s.e2 || 3, s.e3 || 3, s.e4 || 3,
+    s.a1 != null ? s.a1 : (a.a1 || 3),
+    s.a2 != null ? s.a2 : (a.a2 || 3),
+    s.a3 != null ? s.a3 : (a.a3 || 3),
+    s.a4 != null ? s.a4 : (a.a4 || 3),
+    s.a5 != null ? s.a5 : (a.a5 || 3),
+
+    s.b1 != null ? s.b1 : (a.b1 || 3),
+    s.b2 != null ? s.b2 : (a.b2 || 3),
+    s.b3 != null ? s.b3 : (a.b3 || 3),
+    s.b4 != null ? s.b4 : (a.b4 || 3),
+    s.b5 != null ? s.b5 : (a.b5 || 3),
+
+    s.c1 != null ? s.c1 : (a.c1 || 3),
+    s.c2 != null ? s.c2 : (a.c2 || 3),
+    s.c3 != null ? s.c3 : (a.c3 || 3),
+    s.c4 != null ? s.c4 : (a.c4 || 3),
+    s.c5 != null ? s.c5 : (a.c5 || 3),
+
+    s.d1 != null ? s.d1 : (a.d1 || 3),
+    s.d2 != null ? s.d2 : (a.d2 || 3),
+    s.d3 != null ? s.d3 : (a.d3 || 3),
+    s.d4 != null ? s.d4 : (a.d4 || 3),
+
+    s.e1 != null ? s.e1 : (a.e1 || 3),
+    s.e2 != null ? s.e2 : (a.e2 || 3),
+    s.e3 != null ? s.e3 : (a.e3 || 3),
+    s.e4 != null ? s.e4 : (a.e4 || 3),
     
-    s.overallScore || 8,
-    s.commitment || "",
-    s.enps != null ? s.enps : 8,
-    s.suggestions || ""
+    s.overallScore != null ? s.overallScore : (s.overall?.score || 8),
+    s.commitment || (s.overall && s.overall.commitment) || "",
+    s.enps != null ? s.enps : (s.overall && s.overall.enps != null ? s.overall.enps : 8),
+    s.suggestions || (s.overall && s.overall.suggestions) || ""
   ];
+}
+
+// Tự động định dạng các cột số và căn giữa hàng dữ liệu
+function formatRowAppearance(sheet, rowIndex) {
+  try {
+    sheet.getRange(rowIndex, 1, 1, HEADERS.length).setVerticalAlignment("middle");
+    sheet.getRange(rowIndex, 1).setHorizontalAlignment("center"); // Mã Phiếu
+    sheet.getRange(rowIndex, 2).setHorizontalAlignment("center"); // Thời Gian Nộp
+    sheet.getRange(rowIndex, 5).setHorizontalAlignment("center"); // Thâm Niên
+    sheet.getRange(rowIndex, 6).setHorizontalAlignment("center"); // Giới Tính
+    sheet.getRange(rowIndex, 8, 1, 23).setHorizontalAlignment("center"); // 23 tiêu chí Likert (1-5)
+    sheet.getRange(rowIndex, 31).setHorizontalAlignment("center"); // Điểm hài lòng (1-10)
+    sheet.getRange(rowIndex, 33).setHorizontalAlignment("center"); // eNPS
+    sheet.setRowHeight(rowIndex, 26);
+  } catch (_) {}
+}
+
+// Đặt kích thước độ rộng chuẩn cho 34 cột
+function setStandardColumnWidths(sheet) {
+  try {
+    sheet.setColumnWidth(1, 100);  // Mã Phiếu
+    sheet.setColumnWidth(2, 160);  // Thời Gian Nộp
+    sheet.setColumnWidth(3, 190);  // Khối Công Tác
+    sheet.setColumnWidth(4, 180);  // Chức Danh
+    sheet.setColumnWidth(5, 120);  // Thâm Niên
+    sheet.setColumnWidth(6, 90);   // Giới Tính
+    sheet.setColumnWidth(7, 150);  // Trình Độ
+    // Cột 8 đến 30 (23 tiêu chí Likert Bộ Y tế)
+    for (var c = 8; c <= 30; c++) {
+      sheet.setColumnWidth(c, 75);
+    }
+    sheet.setColumnWidth(31, 105); // Điểm Hài Lòng Chung (1-10)
+    sheet.setColumnWidth(32, 180); // Ý Định Gắn Bó
+    sheet.setColumnWidth(33, 95);  // Điểm eNPS (0-10)
+    sheet.setColumnWidth(34, 320); // Ý Kiến Đóng Góp / Hiến Kế
+  } catch (_) {}
+}
+
+// Cài đặt định dạng màu tự động (Heatmap trực quan hóa điểm hài lòng)
+function setupConditionalFormattingIfNeeded(sheet) {
+  try {
+    var rules = sheet.getConditionalFormatRules();
+    if (rules.length > 0) return;
+
+    var criteriaRange = sheet.getRange(2, 8, 1000, 23); // Cột H đến AD (23 tiêu chí A1 -> E4)
+    var newRules = [];
+
+    // Điểm 5: Rất hài lòng - Xanh lá mạ (#dcfce7, chữ #15803d)
+    newRules.push(SpreadsheetApp.newConditionalFormatRule()
+      .whenNumberEqualTo(5)
+      .setBackground("#dcfce7")
+      .setFontColor("#15803d")
+      .setRanges([criteriaRange])
+      .build());
+
+    // Điểm 4: Hài lòng - Xanh lục nhạt (#f0fdf4, chữ #166534)
+    newRules.push(SpreadsheetApp.newConditionalFormatRule()
+      .whenNumberEqualTo(4)
+      .setBackground("#f0fdf4")
+      .setFontColor("#166534")
+      .setRanges([criteriaRange])
+      .build());
+
+    // Điểm 1-2: Không hài lòng / Cần cải thiện - Đỏ nhạt cảnh báo (#fee2e2, chữ #991b1b)
+    newRules.push(SpreadsheetApp.newConditionalFormatRule()
+      .whenNumberLessThanOrEqualTo(2)
+      .setBackground("#fee2e2")
+      .setFontColor("#991b1b")
+      .setRanges([criteriaRange])
+      .build());
+
+    sheet.setConditionalFormatRules(newRules);
+  } catch (_) {}
 }
 
 // Tự động trang trí hàng tiêu đề chuẩn chuyên nghiệp
@@ -316,8 +434,13 @@ function initSheetHeadersIfNeeded(sheet) {
     headerRange.setBackground("#0f766e"); // Màu xanh y tế đặc trưng
     headerRange.setFontColor("#ffffff");
     headerRange.setHorizontalAlignment("center");
+    headerRange.setVerticalAlignment("middle");
     headerRange.setWrap(true);
     sheet.setFrozenRows(1);
+    sheet.setFrozenColumns(1); // Cố định cột Mã phiếu khi cuộn sang phải
     sheet.setRowHeight(1, 45);
+
+    setStandardColumnWidths(sheet);
+    setupConditionalFormattingIfNeeded(sheet);
   }
 }

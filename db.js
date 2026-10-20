@@ -150,11 +150,36 @@ function rowToSurvey(row) {
   };
 }
 
+// Chuẩn hóa định dạng thời gian về ISO 8601 để SQLite lọc ngày (date, datetime) luôn chính xác
+function parseToIso(val) {
+  if (!val) return new Date().toISOString();
+  if (val instanceof Date) return isNaN(val.getTime()) ? new Date().toISOString() : val.toISOString();
+  const str = String(val).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) return d.toISOString();
+  }
+  const match = str.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[,\s]+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+  if (match) {
+    const day = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10) - 1;
+    const year = parseInt(match[3], 10);
+    const hour = parseInt(match[4] || 0, 10);
+    const min = parseInt(match[5] || 0, 10);
+    const sec = parseInt(match[6] || 0, 10);
+    // Giả định định dạng giờ Việt Nam (UTC+7)
+    const d = new Date(Date.UTC(year, month, day, Math.max(0, hour - 7), min, sec));
+    if (!isNaN(d.getTime())) return d.toISOString();
+  }
+  const fallback = new Date(str);
+  return isNaN(fallback.getTime()) ? new Date().toISOString() : fallback.toISOString();
+}
+
 // Helper chuyển từ Object Survey sang Row SQLite
 function surveyToRow(s) {
   return {
     id: s.id,
-    submitted_at: s.submittedAt || new Date().toISOString(),
+    submitted_at: parseToIso(s.submittedAt),
     department: s.demographics?.department || 'other',
     role: s.demographics?.role || 'other',
     experience: s.demographics?.experience || 'other',
