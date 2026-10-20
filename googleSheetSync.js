@@ -134,9 +134,10 @@ function formatSurveyForSheet(s) {
  * Gửi ngầm (Bất đồng bộ) 1 phiếu mới sang Google Sheet
  * Không làm chậm hoặc chặn phản hồi nộp phiếu của nhân viên
  */
-async function syncSurveyAsync(survey) {
-  const webhookUrl = getWebhookUrl();
+async function syncSurveyAsync(survey, customWebhookUrl = null) {
+  const webhookUrl = (customWebhookUrl || getWebhookUrl() || '').trim();
   if (!webhookUrl) {
+    console.warn(`[GoogleSheetSync Warning] Phiếu ${survey.id} chưa thể đẩy sang Google Sheet vì chưa cấu hình Webhook URL.`);
     return { success: false, reason: 'Chưa cấu hình Google Sheet Webhook URL' };
   }
 

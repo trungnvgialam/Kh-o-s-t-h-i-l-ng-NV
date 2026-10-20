@@ -185,7 +185,8 @@ app.get('/api/config', (req, res) => {
     isServerless,
     tunnelUrl: process.env.TUNNEL_URL || null,
     engine: isServerless ? 'Vercel Cloud Serverless (Auto Google Sheet Sync)' : 'SQLite WAL Mode (Enterprise ACID)',
-    googleSheetConnected: Boolean(googleSheetSync.getWebhookUrl())
+    googleSheetConnected: Boolean(googleSheetSync.getWebhookUrl()),
+    googleSheetWebhookUrl: googleSheetSync.getWebhookUrl() || ''
   });
 });
 
@@ -356,16 +357,26 @@ app.post('/api/submit', async (req, res) => {
     // Lưu trực tiếp vào SQLite chuẩn ACID (WAL mode, non-blocking, atomic sequential ID)
     const saved = db.insertSurvey(submission);
 
-    // Tự động đẩy sang Google Sheet (Bắt buộc await với timeout 4s để Vercel không đóng băng container trước khi lưu xong)
-    if (googleSheetSync.getWebhookUrl()) {
+    // Tự động nhận diện Webhook URL từ client payload hoặc header (khắc phục hoàn toàn stateless trên Vercel Lambda)
+    const clientWebhook = body.webhookUrl || req.headers['x-google-sheet-webhook'] || req.query.gsheet_webhook;
+    if (clientWebhook) {
+      settingsManager.syncClientWebhook(clientWebhook);
+    }
+    const effectiveWebhookUrl = clientWebhook || googleSheetSync.getWebhookUrl();
+
+    // Tự động đẩy sang Google Sheet (Bắt buộc await với timeout 5s để Vercel không đóng băng container trước khi lưu xong)
+    if (effectiveWebhookUrl) {
       try {
         await Promise.race([
-          googleSheetSync.syncSurveyAsync(saved),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Google Sheet sync timeout')), 4000))
+          googleSheetSync.syncSurveyAsync(saved, effectiveWebhookUrl),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Google Sheet sync timeout')), 5000))
         ]);
+        console.log(`[Submit] Đã đồng bộ phiếu ${saved.id} sang Google Sheet thành công.`);
       } catch (sheetErr) {
         console.warn('[GoogleSheetSync Submit Warning]:', sheetErr.message);
       }
+    } else {
+      console.warn(`[Submit] Phiếu ${saved.id} đã lưu SQLite, nhưng CHƯA thể đẩy sang Google Sheet do hệ thống chưa có Webhook URL.`);
     }
 
     res.json({

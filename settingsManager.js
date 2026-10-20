@@ -109,10 +109,22 @@ function getGoogleSheetWebhookUrl() {
  * Lưu Google Sheet Webhook URL
  */
 function setGoogleSheetWebhookUrl(url) {
+  const cleanUrl = (url || '').trim();
   const settings = getAllSettings();
-  settings.googleSheetWebhookUrl = (url || '').trim();
+  settings.googleSheetWebhookUrl = cleanUrl;
   settings.updatedAt = new Date().toISOString();
   saveAllSettings(settings);
+
+  // Cố gắng ghi đè trực tiếp vào data/settings.json gốc trong mã nguồn (nếu có quyền ghi)
+  try {
+    if (fs.existsSync(ROOT_SETTINGS_FILE)) {
+      const rootSettings = JSON.parse(fs.readFileSync(ROOT_SETTINGS_FILE, 'utf8') || '{}');
+      rootSettings.googleSheetWebhookUrl = cleanUrl;
+      rootSettings.updatedAt = settings.updatedAt;
+      fs.writeFileSync(ROOT_SETTINGS_FILE, JSON.stringify(rootSettings, null, 2), 'utf8');
+    }
+  } catch (_) {}
+
   return true;
 }
 

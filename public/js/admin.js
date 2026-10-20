@@ -227,8 +227,29 @@ async function syncTargetToServer(targetVal) {
   } catch (_) {}
 }
 
+async function autoPullGSheetIfConfigured() {
+  const webhookUrl = (localStorage.getItem('admin_gsheet_webhook') || '').trim();
+  if (!webhookUrl) return;
+
+  try {
+    const res = await fetch('/api/admin/pull-google-sheet', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ webhookUrl })
+    });
+    const data = await res.json();
+    if (data.success && data.inserted > 0) {
+      console.log(`[AutoPull] Đã tự động nạp ${data.inserted} phiếu mới từ Google Sheet vào Dashboard!`);
+    }
+  } catch (err) {
+    console.warn('[AutoPull Warning] Bỏ qua lỗi kéo dữ liệu Google Sheet khi tải trang:', err.message);
+  }
+}
+
 async function initDashboard() {
   await loadSystemConfig();
+  // Tự động đồng bộ kéo toàn bộ phiếu từ Google Sheet về trước khi tính toán số liệu
+  await autoPullGSheetIfConfigured();
   await loadDashboardStats();
   await loadResponsesTable(1);
 }

@@ -25,6 +25,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
+  let serverGSheetWebhook = '';
+  // Tải cấu hình máy chủ để lấy Google Sheet Webhook URL (nếu có)
+  fetch('/api/config')
+    .then(r => r.json())
+    .then(cfg => {
+      if (cfg && cfg.googleSheetWebhookUrl) {
+        serverGSheetWebhook = cfg.googleSheetWebhookUrl;
+      }
+    })
+    .catch(() => {});
+
   // Render question groups into the respective sections
   renderSections();
   loadDraft();
@@ -630,10 +641,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
+      const webhookUrl = serverGSheetWebhook || localStorage.getItem('admin_gsheet_webhook') || '';
+      const payload = {
+        ...state,
+        webhookUrl
+      };
+
+      const headers = { 'Content-Type': 'application/json' };
+      if (webhookUrl) {
+        headers['X-Google-Sheet-Webhook'] = webhookUrl;
+      }
+
       const res = await fetch('/api/submit', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(state)
+        headers,
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
 

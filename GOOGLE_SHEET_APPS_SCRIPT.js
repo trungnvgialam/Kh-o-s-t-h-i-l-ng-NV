@@ -242,6 +242,12 @@ function parseToIso(val) {
   return isNaN(fallback.getTime()) ? new Date().toISOString() : fallback.toISOString();
 }
 
+// Hàm hỗ trợ đệm số 0 tương thích 100% mọi phiên bản JavaScript của Google Apps Script
+function padZero(num, size) {
+  var s = "0000" + num;
+  return s.substr(s.length - size);
+}
+
 // Chuyển 1 dòng trong Google Sheet thành Object Survey chuẩn (Linh hoạt cho cả bảng có sẵn Mã phiếu hoặc bảng Google Form)
 function rowArrayToSurvey(r, index, isCol0Timestamp) {
   if (!r || !Array.isArray(r)) return null;
@@ -259,13 +265,13 @@ function rowArrayToSurvey(r, index, isCol0Timestamp) {
   var offset = 0;
 
   if (isCol0Timestamp) {
-    id = 'NV-GS-' + String(index + 1).padStart(4, '0');
+    id = 'NV-GS-' + padZero(index + 1, 4);
     subAt = parseToIso(r[0]);
     offset = -1; // Cột Khối công tác nằm ở index 1 thay vì index 2
   } else {
     var rawId = r[0] ? String(r[0]).trim() : '';
     if (!rawId || r[0] instanceof Date || /^\d{1,2}[\/\-]/.test(rawId)) {
-      id = 'NV-GS-' + String(index + 1).padStart(4, '0');
+      id = 'NV-GS-' + padZero(index + 1, 4);
       subAt = parseToIso(r[0] || r[1]);
     } else {
       id = rawId;
@@ -378,8 +384,12 @@ function getAllSurveysFromSheet(sheet) {
 
   var surveys = [];
   for (var i = 0; i < dataRows.length; i++) {
-    var s = rowArrayToSurvey(dataRows[i], i, isCol0Timestamp);
-    if (s && s.id) surveys.push(s);
+    try {
+      var s = rowArrayToSurvey(dataRows[i], i, isCol0Timestamp);
+      if (s && s.id) surveys.push(s);
+    } catch (rowErr) {
+      // Bỏ qua dòng bị lỗi để các dòng còn lại vẫn được tải đầy đủ về Dashboard
+    }
   }
   return surveys;
 }
@@ -559,7 +569,7 @@ function surveyToRowArray(s) {
     s.e3 != null ? s.e3 : (a.e3 || 3),
     s.e4 != null ? s.e4 : (a.e4 || 3),
     
-    s.overallScore != null ? s.overallScore : (s.overall?.score || 8),
+    s.overallScore != null ? s.overallScore : ((s.overall && s.overall.score != null) ? s.overall.score : 8),
     s.commitment || (s.overall && s.overall.commitment) || "",
     s.enps != null ? s.enps : (s.overall && s.overall.enps != null ? s.overall.enps : 8),
     s.suggestions || (s.overall && s.overall.suggestions) || ""
@@ -641,20 +651,28 @@ function setupConditionalFormattingIfNeeded(sheet) {
 
 // Tự động trang trí hàng tiêu đề chuẩn chuyên nghiệp
 function initSheetHeadersIfNeeded(sheet) {
-  if (sheet.getLastRow() === 0) {
-    sheet.appendRow(HEADERS);
-    var headerRange = sheet.getRange(1, 1, 1, HEADERS.length);
-    headerRange.setFontWeight("bold");
-    headerRange.setBackground("#0f766e"); // Màu xanh y tế đặc trưng
-    headerRange.setFontColor("#ffffff");
-    headerRange.setHorizontalAlignment("center");
-    headerRange.setVerticalAlignment("middle");
-    headerRange.setWrap(true);
-    sheet.setFrozenRows(1);
-    sheet.setFrozenColumns(1); // Cố định cột Mã phiếu khi cuộn sang phải
-    sheet.setRowHeight(1, 45);
+  try {
+    // Đảm bảo trang tính có tối thiểu 34 cột trước khi tạo tiêu đề
+    var maxCols = sheet.getMaxColumns();
+    if (maxCols < HEADERS.length) {
+      sheet.insertColumnsAfter(maxCols, HEADERS.length - maxCols);
+    }
 
-    setStandardColumnWidths(sheet);
-    setupConditionalFormattingIfNeeded(sheet);
-  }
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow(HEADERS);
+      var headerRange = sheet.getRange(1, 1, 1, HEADERS.length);
+      headerRange.setFontWeight("bold");
+      headerRange.setBackground("#0f766e"); // Màu xanh y tế đặc trưng
+      headerRange.setFontColor("#ffffff");
+      headerRange.setHorizontalAlignment("center");
+      headerRange.setVerticalAlignment("middle");
+      headerRange.setWrap(true);
+      sheet.setFrozenRows(1);
+      sheet.setFrozenColumns(1); // Cố định cột Mã phiếu khi cuộn sang phải
+      sheet.setRowHeight(1, 45);
+
+      setStandardColumnWidths(sheet);
+      setupConditionalFormattingIfNeeded(sheet);
+    }
+  } catch (_) {}
 }
