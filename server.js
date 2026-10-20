@@ -757,8 +757,14 @@ const COMMITMENT_LABELS = {
 };
 
 // API: Export Excel (Admin only - Hỗ trợ lọc theo khối & giai đoạn)
-app.get('/api/export-excel', requireAdmin, (req, res) => {
+app.get('/api/export-excel', requireAdmin, async (req, res) => {
   try {
+    const clientWebhook = req.headers['x-google-sheet-webhook'] || req.query.gsheet_webhook;
+    if (clientWebhook) {
+      settingsManager.syncClientWebhook(clientWebhook);
+    }
+    await syncWithGoogleSheetIfConfigured();
+
     const deptFilter = req.query.department || 'all';
     const startDate = req.query.startDate || null;
     const endDate = req.query.endDate || null;
@@ -889,11 +895,12 @@ app.get('/api/export-excel', requireAdmin, (req, res) => {
   }
 });
 
-// API: Clear data (Admin only)
-app.post('/api/clear-data', requireAdmin, (req, res) => {
+// API: Clear data (Admin only - Xóa cả SQLite và Google Sheet nếu có)
+app.post('/api/clear-data', requireAdmin, async (req, res) => {
   try {
     db.clearAllSurveys();
-    res.json({ success: true, message: 'Đã làm mới dữ liệu khảo sát trong SQLite thành công!' });
+    await googleSheetSync.clearAllSurveysOnSheet();
+    res.json({ success: true, message: 'Đã làm mới dữ liệu khảo sát thành công trên toàn bộ hệ thống và Google Sheet!' });
   } catch (err) {
     console.error('Error clearing data:', err);
     res.status(500).json({ success: false, message: 'Lỗi khi xóa dữ liệu.', error: err.message });
