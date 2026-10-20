@@ -32,10 +32,15 @@ function getAdminToken() {
 }
 
 function getAuthHeaders() {
-  return {
+  const headers = {
     'Authorization': 'Bearer ' + getAdminToken(),
     'Content-Type': 'application/json'
   };
+  const target = localStorage.getItem('admin_target_respondents');
+  if (target) headers['X-Target-Respondents'] = target;
+  const gsheet = localStorage.getItem('admin_gsheet_webhook');
+  if (gsheet) headers['X-Google-Sheet-Webhook'] = gsheet;
+  return headers;
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -148,10 +153,12 @@ function updateExportExcelLink() {
     const token = getAdminToken();
     const dept = document.getElementById('filter-department')?.value || 'all';
     const { startDate, endDate, period } = getActiveDateRange();
+    const gsheet = localStorage.getItem('admin_gsheet_webhook') || '';
     let url = `/api/export-excel?department=${encodeURIComponent(dept)}&token=${encodeURIComponent(token)}`;
     if (startDate) url += `&startDate=${encodeURIComponent(startDate)}`;
     if (endDate) url += `&endDate=${encodeURIComponent(endDate)}`;
     if (period) url += `&period=${encodeURIComponent(period)}`;
+    if (gsheet) url += `&gsheet_webhook=${encodeURIComponent(gsheet)}`;
     exportBtn.href = url;
   }
 }
@@ -310,7 +317,7 @@ function renderQrCode(url) {
 }
 
 // 2. Load Analytics & Statistics
-async function loadDashboardStats() {
+async function loadDashboardStats(force = false) {
   const deptFilter = document.getElementById('filter-department')?.value || 'all';
   const { period, startDate, endDate, labelText } = getActiveDateRange();
 
@@ -325,6 +332,7 @@ async function loadDashboardStats() {
 
   const cachedTarget = localStorage.getItem('admin_target_respondents') || '';
   let url = `/api/stats?department=${encodeURIComponent(deptFilter)}`;
+  if (force) url += '&force=1';
   if (startDate) url += `&startDate=${encodeURIComponent(startDate)}`;
   if (endDate) url += `&endDate=${encodeURIComponent(endDate)}`;
   if (period) url += `&period=${encodeURIComponent(period)}`;
@@ -332,10 +340,7 @@ async function loadDashboardStats() {
 
   try {
     const res = await fetch(url, {
-      headers: {
-        'Authorization': 'Bearer ' + getAdminToken(),
-        'X-Target-Respondents': cachedTarget
-      }
+      headers: getAuthHeaders()
     });
     if (res.status === 401) {
       sessionStorage.removeItem('admin_token');
@@ -737,18 +742,19 @@ function updateFeedbackWall(suggestions) {
 }
 
 // 11. Load Paginated Responses Table
-async function loadResponsesTable(page = 1) {
+async function loadResponsesTable(page = 1, force = false) {
   const search = document.getElementById('table-search-input')?.value || '';
   const dept = document.getElementById('filter-department')?.value || 'all';
   const { startDate, endDate } = getActiveDateRange();
 
   let url = `/api/responses?page=${page}&limit=10&search=${encodeURIComponent(search)}&department=${encodeURIComponent(dept)}`;
+  if (force) url += '&force=1';
   if (startDate) url += `&startDate=${encodeURIComponent(startDate)}`;
   if (endDate) url += `&endDate=${encodeURIComponent(endDate)}`;
 
   try {
     const res = await fetch(url, {
-      headers: { 'Authorization': 'Bearer ' + getAdminToken() }
+      headers: getAuthHeaders()
     });
     if (res.status === 401) {
       sessionStorage.removeItem('admin_token');
