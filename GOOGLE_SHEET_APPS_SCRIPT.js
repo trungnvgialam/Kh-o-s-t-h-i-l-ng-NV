@@ -105,6 +105,118 @@ var REVERSE_MAP = {
   "Dự định chuyển nơi khác": "du_dinh_chuyen"
 };
 
+// Chuẩn hóa tên Khối công tác linh hoạt (chống lỗi khác biệt dấu câu, viết tắt)
+function normalizeDept(val) {
+  if (!val) return 'other';
+  var s = String(val).toLowerCase().trim();
+  if (REVERSE_MAP[val]) return REVERSE_MAP[val];
+  if (s.includes('nội') || s === 'noi') return 'noi';
+  if (s.includes('ngoại') || s === 'ngoai') return 'ngoai';
+  if (s.includes('cấp cứu') || s.includes('khám bệnh') || s === 'capcuu') return 'capcuu';
+  if (s.includes('cận lâm sàng') || s.includes('dược') || s === 'canlamsang') return 'canlamsang';
+  if (s.includes('phòng ban') || s.includes('hành chính') || s.includes('chức năng') || s === 'hanhchinh') return 'hanhchinh';
+  return 'other';
+}
+
+// Chuẩn hóa Chức danh linh hoạt
+function normalizeRole(val) {
+  if (!val) return 'other';
+  var s = String(val).toLowerCase().trim();
+  if (REVERSE_MAP[val]) return REVERSE_MAP[val];
+  if (s.includes('bác sĩ') || s.includes('bac si') || s === 'bacsi') return 'bacsi';
+  if (s.includes('điều dưỡng') || s.includes('hộ sinh') || s === 'dieuduong') return 'dieuduong';
+  if (s.includes('kỹ thuật viên') || s === 'kythuatvien') return 'kythuatvien';
+  if (s.includes('dược') || s === 'duocsi') return 'duocsi';
+  if (s.includes('quản lý') || s.includes('hành chính') || s === 'quanly_hanhchinh') return 'quanly_hanhchinh';
+  if (s.includes('hộ lý') || s.includes('y công') || s.includes('hỗ trợ') || s === 'hotro') return 'hotro';
+  return 'other';
+}
+
+function normalizeExp(val) {
+  if (!val) return 'other';
+  var s = String(val).toLowerCase().trim();
+  if (REVERSE_MAP[val]) return REVERSE_MAP[val];
+  if (s.includes('dưới 2') || s.includes('< 2') || s === 'duoi2') return 'duoi2';
+  if (s.includes('2 đến 5') || s.includes('2-5') || s === 'tu2den5') return 'tu2den5';
+  if (s.includes('5 đến 10') || s.includes('5-10') || s === 'tu5den10') return 'tu5den10';
+  if (s.includes('trên 10') || s.includes('> 10') || s === 'tren10') return 'tren10';
+  return 'other';
+}
+
+function normalizeGender(val) {
+  if (!val) return 'khac';
+  var s = String(val).toLowerCase().trim();
+  if (REVERSE_MAP[val]) return REVERSE_MAP[val];
+  if (s.startsWith('nam') || s === 'm') return 'nam';
+  if (s.startsWith('nữ') || s.startsWith('nu') || s === 'f') return 'nu';
+  return 'khac';
+}
+
+function normalizeDegree(val) {
+  if (!val) return 'other';
+  var s = String(val).toLowerCase().trim();
+  if (REVERSE_MAP[val]) return REVERSE_MAP[val];
+  if (s.includes('trung cấp') || s.includes('cao đẳng') || s === 'trungcap_caodang') return 'trungcap_caodang';
+  if (s.includes('đại học') || s.includes('dai hoc') || s === 'daihoc') return 'daihoc';
+  if (s.includes('sau đại học') || s.includes('ths') || s.includes('cki') || s.includes('ckii') || s.includes('ts') || s === 'saudaihoc') return 'saudaihoc';
+  return 'other';
+}
+
+function normalizeCommitment(val) {
+  if (!val) return 'chac_chan';
+  var s = String(val).toLowerCase().trim();
+  if (REVERSE_MAP[val]) return REVERSE_MAP[val];
+  if (s.includes('lâu dài') || s.includes('chắc chắn') || s === 'chac_chan') return 'chac_chan';
+  if (s.includes('có thể') || s === 'co_the') return 'co_the';
+  if (s.includes('phân vân') || s === 'phan_van') return 'phan_van';
+  if (s.includes('chuyển') || s.includes('nghỉ') || s === 'du_dinh_chuyen') return 'du_dinh_chuyen';
+  return 'chac_chan';
+}
+
+// Trích xuất điểm số từ chuỗi text (Ví dụ: "5 - Rất hài lòng" ➔ 5)
+function parseScore(val, def) {
+  if (val === null || val === undefined || val === '') return def;
+  var n = Number(val);
+  if (!isNaN(n) && n >= 0 && n <= 10) return Math.round(n);
+  var m = String(val).match(/\d+/);
+  if (m) {
+    var p = Number(m[0]);
+    if (!isNaN(p) && p >= 0 && p <= 10) return p;
+  }
+  return def;
+}
+
+// Tự động tìm trang tính (Sheet/Tab) chứa dữ liệu thực tế trong File Google Sheets
+function getDataSheet(ss) {
+  var sheets = ss.getSheets();
+  if (!sheets || sheets.length === 0) return ss.getActiveSheet();
+  if (sheets.length === 1) return sheets[0];
+
+  // 1. Tìm sheet có nhiều hơn 1 dòng dữ liệu (ưu tiên sheet có nhiều bản ghi nhất)
+  var bestSheet = null;
+  var maxRows = 0;
+  for (var i = 0; i < sheets.length; i++) {
+    var r = sheets[i].getLastRow();
+    if (r > maxRows) {
+      maxRows = r;
+      bestSheet = sheets[i];
+    }
+  }
+  if (bestSheet && maxRows > 1) {
+    return bestSheet;
+  }
+
+  // 2. Tìm sheet có tên liên quan đến khảo sát hoặc phản hồi
+  for (var j = 0; j < sheets.length; j++) {
+    var name = sheets[j].getName().toLowerCase();
+    if (name.includes('khảo sát') || name.includes('khao sat') || name.includes('form') || name.includes('câu trả lời') || name.includes('response')) {
+      return sheets[j];
+    }
+  }
+
+  return ss.getActiveSheet() || sheets[0];
+}
+
 // Chuẩn hóa mọi định dạng ngày tháng sang ISO 8601 quốc tế (Hỗ trợ định dạng Việt Nam DD/MM/YYYY)
 function parseToIso(val) {
   if (!val) return new Date().toISOString();
@@ -130,90 +242,190 @@ function parseToIso(val) {
   return isNaN(fallback.getTime()) ? new Date().toISOString() : fallback.toISOString();
 }
 
-// Chuyển 1 dòng trong Google Sheet thành Object Survey chuẩn
-function rowArrayToSurvey(r) {
-  if (!r || !r[0]) return null;
-  var deptVal = String(r[2] || "").trim();
-  var roleVal = String(r[3] || "").trim();
-  var expVal = String(r[4] || "").trim();
-  var genderVal = String(r[5] || "").trim();
-  var degreeVal = String(r[6] || "").trim();
-  var commitVal = String(r[31] || "").trim();
+// Chuyển 1 dòng trong Google Sheet thành Object Survey chuẩn (Linh hoạt cho cả bảng có sẵn Mã phiếu hoặc bảng Google Form)
+function rowArrayToSurvey(r, index, isCol0Timestamp) {
+  if (!r || !Array.isArray(r)) return null;
+  var hasContent = false;
+  for (var k = 0; k < r.length; k++) {
+    if (r[k] !== null && r[k] !== undefined && String(r[k]).trim() !== '') {
+      hasContent = true;
+      break;
+    }
+  }
+  if (!hasContent) return null;
 
-  var subAt = parseToIso(r[1]);
+  var id = '';
+  var subAt = '';
+  var offset = 0;
+
+  if (isCol0Timestamp) {
+    id = 'NV-GS-' + String(index + 1).padStart(4, '0');
+    subAt = parseToIso(r[0]);
+    offset = -1; // Cột Khối công tác nằm ở index 1 thay vì index 2
+  } else {
+    var rawId = r[0] ? String(r[0]).trim() : '';
+    if (!rawId || r[0] instanceof Date || /^\d{1,2}[\/\-]/.test(rawId)) {
+      id = 'NV-GS-' + String(index + 1).padStart(4, '0');
+      subAt = parseToIso(r[0] || r[1]);
+    } else {
+      id = rawId;
+      subAt = parseToIso(r[1]);
+    }
+    offset = 0;
+  }
+
+  var getCol = function(stdIdx) {
+    var actualIdx = stdIdx + offset;
+    return (actualIdx >= 0 && actualIdx < r.length) ? r[actualIdx] : '';
+  };
+
+  var deptVal = getCol(2);
+  var roleVal = getCol(3);
+  var expVal = getCol(4);
+  var genderVal = getCol(5);
+  var degreeVal = getCol(6);
+
+  var a1 = parseScore(getCol(7), 3);
+  var a2 = parseScore(getCol(8), 3);
+  var a3 = parseScore(getCol(9), 3);
+  var a4 = parseScore(getCol(10), 3);
+  var a5 = parseScore(getCol(11), 3);
+
+  var b1 = parseScore(getCol(12), 3);
+  var b2 = parseScore(getCol(13), 3);
+  var b3 = parseScore(getCol(14), 3);
+  var b4 = parseScore(getCol(15), 3);
+  var b5 = parseScore(getCol(16), 3);
+
+  var c1 = parseScore(getCol(17), 3);
+  var c2 = parseScore(getCol(18), 3);
+  var c3 = parseScore(getCol(19), 3);
+  var c4 = parseScore(getCol(20), 3);
+  var c5 = parseScore(getCol(21), 3);
+
+  var d1 = parseScore(getCol(22), 3);
+  var d2 = parseScore(getCol(23), 3);
+  var d3 = parseScore(getCol(24), 3);
+  var d4 = parseScore(getCol(25), 3);
+
+  var e1 = parseScore(getCol(26), 3);
+  var e2 = parseScore(getCol(27), 3);
+  var e3 = parseScore(getCol(28), 3);
+  var e4 = parseScore(getCol(29), 3);
+
+  var overallScore = parseScore(getCol(30), 8);
+  var commitVal = getCol(31);
+  var enps = parseScore(getCol(32), 8);
+  var suggestions = String(getCol(33) || '');
 
   return {
-    id: String(r[0]).trim(),
+    id: id,
     submittedAt: subAt,
     demographics: {
-      department: REVERSE_MAP[deptVal] || deptVal || "other",
-      role: REVERSE_MAP[roleVal] || roleVal || "other",
-      experience: REVERSE_MAP[expVal] || expVal || "other",
-      gender: REVERSE_MAP[genderVal] || genderVal || "khac",
-      degree: REVERSE_MAP[degreeVal] || degreeVal || "other"
+      department: normalizeDept(deptVal),
+      role: normalizeRole(roleVal),
+      experience: normalizeExp(expVal),
+      gender: normalizeGender(genderVal),
+      degree: normalizeDegree(degreeVal)
     },
     answers: {
-      a1: Number(r[7]) || 3, a2: Number(r[8]) || 3, a3: Number(r[9]) || 3, a4: Number(r[10]) || 3, a5: Number(r[11]) || 3,
-      b1: Number(r[12]) || 3, b2: Number(r[13]) || 3, b3: Number(r[14]) || 3, b4: Number(r[15]) || 3, b5: Number(r[16]) || 3,
-      c1: Number(r[17]) || 3, c2: Number(r[18]) || 3, c3: Number(r[19]) || 3, c4: Number(r[20]) || 3, c5: Number(r[21]) || 3,
-      d1: Number(r[22]) || 3, d2: Number(r[23]) || 3, d3: Number(r[24]) || 3, d4: Number(r[25]) || 3,
-      e1: Number(r[26]) || 3, e2: Number(r[27]) || 3, e3: Number(r[28]) || 3, e4: Number(r[29]) || 3
+      a1: a1, a2: a2, a3: a3, a4: a4, a5: a5,
+      b1: b1, b2: b2, b3: b3, b4: b4, b5: b5,
+      c1: c1, c2: c2, c3: c3, c4: c4, c5: c5,
+      d1: d1, d2: d2, d3: d3, d4: d4,
+      e1: e1, e2: e2, e3: e3, e4: e4
     },
     overall: {
-      score: Number(r[30]) || 8,
-      commitment: REVERSE_MAP[commitVal] || commitVal || "chac_chan",
-      enps: Number(r[32]) || 8,
-      suggestions: String(r[33] || "")
+      score: overallScore,
+      commitment: normalizeCommitment(commitVal),
+      enps: enps,
+      suggestions: suggestions
     }
   };
 }
 
-// Hàm đọc toàn bộ phiếu từ Google Sheet trả về cho Vercel
+// Hàm đọc toàn bộ phiếu từ Google Sheet trả về cho Dashboard
 function getAllSurveysFromSheet(sheet) {
   var lastRow = sheet.getLastRow();
   if (lastRow <= 1) {
     return [];
   }
-  var values = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
+
+  // Tự động mở rộng số cột nếu sheet chưa đủ 34 cột
+  var maxCols = sheet.getMaxColumns();
+  if (maxCols < HEADERS.length) {
+    sheet.insertColumnsAfter(maxCols, HEADERS.length - maxCols);
+  }
+
+  var lastCol = sheet.getLastColumn();
+  var readCols = Math.min(Math.max(lastCol, HEADERS.length), sheet.getMaxColumns());
+  var allValues = sheet.getRange(1, 1, lastRow, readCols).getValues();
+  if (!allValues || allValues.length <= 1) return [];
+
+  var headerRow = allValues[0];
+  var dataRows = allValues.slice(1);
+
+  // Nhận diện xem Cột A (index 0) có phải là Mã Phiếu hay là Thời gian nộp (Google Form layout)
+  var col0Header = String(headerRow[0] || '').toLowerCase();
+  var isCol0Timestamp = false;
+  if (col0Header.includes('thời gian') || col0Header.includes('timestamp') || col0Header.includes('dấu thời gian')) {
+    isCol0Timestamp = true;
+  } else if (!col0Header.includes('mã') && !col0Header.includes('id')) {
+    if (dataRows[0] && (dataRows[0][0] instanceof Date || /^\d{1,2}[\/\-]/.test(String(dataRows[0][0])))) {
+      isCol0Timestamp = true;
+    }
+  }
+
   var surveys = [];
-  for (var i = 0; i < values.length; i++) {
-    var s = rowArrayToSurvey(values[i]);
+  for (var i = 0; i < dataRows.length; i++) {
+    var s = rowArrayToSurvey(dataRows[i], i, isCol0Timestamp);
     if (s && s.id) surveys.push(s);
   }
   return surveys;
 }
 
 function doGet(e) {
-  var action = (e && e.parameter && e.parameter.action) || 'status';
-
-  // Yêu cầu lấy toàn bộ dữ liệu phiếu về cho Vercel Dashboard
-  if (action === 'get_all' || action === 'get_surveys') {
+  try {
+    var action = (e && e.parameter && e.parameter.action) || 'status';
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getActiveSheet();
-    var surveys = getAllSurveysFromSheet(sheet);
+    var sheet = getDataSheet(ss);
+
+    // Yêu cầu lấy toàn bộ dữ liệu phiếu về cho Dashboard
+    if (action === 'get_all' || action === 'get_surveys') {
+      var surveys = getAllSurveysFromSheet(sheet);
+      return ContentService.createTextOutput(JSON.stringify({
+        success: true,
+        count: surveys.length,
+        sheetName: sheet.getName(),
+        totalRows: sheet.getLastRow(),
+        surveys: surveys
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
     return ContentService.createTextOutput(JSON.stringify({
       success: true,
-      count: surveys.length,
-      surveys: surveys
+      service: "Hệ thống Khảo sát Hài lòng Y tế (Chuẩn Bộ Y tế)",
+      status: "Đang hoạt động hoàn hảo",
+      sheetName: sheet.getName(),
+      totalRows: sheet.getLastRow(),
+      time: new Date().toISOString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      error: err.toString(),
+      surveys: []
     })).setMimeType(ContentService.MimeType.JSON);
   }
-
-  return ContentService.createTextOutput(JSON.stringify({
-    success: true,
-    service: "Hệ thống Khảo sát Hài lòng Y tế (500 NV)",
-    status: "Đang hoạt động hoàn hảo",
-    time: new Date().toISOString()
-  })).setMimeType(ContentService.MimeType.JSON);
 }
 
 function doPost(e) {
   var lock = LockService.getScriptLock();
-  // Đợi tối đa 30 giây tránh xung đột khi nhiều phiếu nộp cùng lúc
   lock.tryLock(30000);
 
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getActiveSheet();
+    var sheet = getDataSheet(ss);
     
     // Tự động khởi tạo dòng Tiêu đề nếu trang tính chưa có
     initSheetHeadersIfNeeded(sheet);
@@ -232,11 +444,13 @@ function doPost(e) {
     }
 
     // 2. Lấy toàn bộ phiếu về máy chủ
-    if (data.action === 'get_all') {
+    if (data.action === 'get_all' || data.action === 'get_surveys') {
       var allSurveys = getAllSurveysFromSheet(sheet);
       return ContentService.createTextOutput(JSON.stringify({
         success: true,
         count: allSurveys.length,
+        sheetName: sheet.getName(),
+        totalRows: sheet.getLastRow(),
         surveys: allSurveys
       })).setMimeType(ContentService.MimeType.JSON);
     }

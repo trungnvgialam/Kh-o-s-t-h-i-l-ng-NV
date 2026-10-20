@@ -1191,6 +1191,7 @@ function setupGoogleSheetSyncEvents() {
   const gsheetInput = document.getElementById('gsheet-webhook-input');
   const statusBadge = document.getElementById('gsheet-status-badge');
   const alertBox = document.getElementById('gsheet-alert-box');
+  const btnPull = document.getElementById('btn-pull-gsheet');
   const btnSave = document.getElementById('btn-save-gsheet');
   const btnTest = document.getElementById('btn-test-gsheet');
   const btnSyncAll = document.getElementById('btn-sync-all-gsheet');
@@ -1266,6 +1267,40 @@ function setupGoogleSheetSyncEvents() {
     if (e.target === gsheetModal) gsheetModal.classList.remove('active');
   });
 
+  // Tải (Kéo) toàn bộ phiếu từ Google Sheet về Dashboard
+  btnPull?.addEventListener('click', async () => {
+    const webhookUrl = (gsheetInput?.value || localStorage.getItem('admin_gsheet_webhook') || '').trim();
+    if (!webhookUrl) {
+      showAlert('Vui lòng dán liên kết Google Apps Script Webhook URL trước khi tải dữ liệu.', false);
+      return;
+    }
+
+    hideAlert();
+    btnPull.disabled = true;
+    btnPull.innerText = '⏳ Đang kéo dữ liệu từ Google Sheet...';
+
+    try {
+      const res = await fetch('/api/admin/pull-google-sheet', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ webhookUrl })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showAlert(`🎉 ${data.message}`, true);
+        await loadDashboardStats(true);
+        await loadResponsesTable(1, true);
+      } else {
+        showAlert(data.message || 'Lỗi khi tải dữ liệu từ Google Sheet.', false);
+      }
+    } catch (err) {
+      showAlert('Lỗi kết nối khi tải dữ liệu từ Google Sheet: ' + err.message, false);
+    } finally {
+      btnPull.disabled = false;
+      btnPull.innerText = '📥 Tải Phiếu Từ Google Sheet Về Dashboard';
+    }
+  });
+
   // Lưu cấu hình URL Webhook
   btnSave?.addEventListener('click', async () => {
     const webhookUrl = (gsheetInput?.value || '').trim();
@@ -1287,7 +1322,7 @@ function setupGoogleSheetSyncEvents() {
       });
       const data = await res.json();
       if (data.success) {
-        showAlert('Đã lưu cấu hình Google Sheet Webhook thành công! Đang tự động kéo dữ liệu...', true);
+        showAlert('Đã lưu cấu hình Google Sheet Webhook! Đang tự động kéo dữ liệu về...', true);
         if (statusBadge) {
           if (data.configured) {
             statusBadge.style.background = '#ecfdf5';
@@ -1299,6 +1334,22 @@ function setupGoogleSheetSyncEvents() {
             statusBadge.innerText = '⚠️ Chưa kết nối';
           }
         }
+        
+        // Tự động kéo dữ liệu từ Google Sheet về ngay lập tức
+        if (webhookUrl) {
+          try {
+            const pullRes = await fetch('/api/admin/pull-google-sheet', {
+              method: 'POST',
+              headers: getAuthHeaders(),
+              body: JSON.stringify({ webhookUrl })
+            });
+            const pullData = await pullRes.json();
+            if (pullData.success) {
+              showAlert(`🎉 ${pullData.message}`, true);
+            }
+          } catch (_) {}
+        }
+
         // Tự động tải lại số liệu và bảng chi tiết ngay
         await loadDashboardStats(true);
         await loadResponsesTable(1, true);
@@ -1351,7 +1402,7 @@ function setupGoogleSheetSyncEvents() {
     }
   });
 
-  // Đồng bộ toàn bộ dữ liệu khảo sát sang Google Sheet
+  // Đẩy toàn bộ phiếu từ hệ thống sang Google Sheet
   btnSyncAll?.addEventListener('click', async () => {
     const webhookUrl = (gsheetInput?.value || '').trim();
     if (!webhookUrl) {
@@ -1359,7 +1410,7 @@ function setupGoogleSheetSyncEvents() {
       return;
     }
 
-    if (!confirm('Bạn có chắc chắn muốn đẩy toàn bộ phiếu khảo sát hiện có sang Google Sheet?')) {
+    if (!confirm('Bạn có chắc chắn muốn đẩy dữ liệu phiếu khảo sát hiện có sang Google Sheet?')) {
       return;
     }
 
@@ -1370,11 +1421,14 @@ function setupGoogleSheetSyncEvents() {
     try {
       const res = await fetch('/api/admin/sync-google-sheet', {
         method: 'POST',
-        headers: getAuthHeaders()
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ webhookUrl })
       });
       const data = await res.json();
       if (data.success) {
-        showAlert(`Đã đồng bộ thành công ${data.count || 0} phiếu sang Google Sheet!`, true);
+        showAlert(`🎉 ${data.message}`, true);
+        await loadDashboardStats(true);
+        await loadResponsesTable(1, true);
       } else {
         showAlert(data.message || 'Lỗi khi đồng bộ dữ liệu.', false);
       }
@@ -1382,7 +1436,7 @@ function setupGoogleSheetSyncEvents() {
       showAlert('Lỗi máy chủ khi đồng bộ: ' + err.message, false);
     } finally {
       btnSyncAll.disabled = false;
-      btnSyncAll.innerText = '🚀 Đồng Bộ Toàn Bộ Phiếu Ngay';
+      btnSyncAll.innerText = '📤 Đẩy Phiếu Lên Google Sheet';
     }
   });
 

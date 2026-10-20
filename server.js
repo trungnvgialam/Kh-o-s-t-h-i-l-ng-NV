@@ -945,13 +945,75 @@ app.post('/api/admin/test-google-sheet', requireAdmin, async (req, res) => {
   }
 });
 
-// Đồng bộ toàn bộ dữ liệu khảo sát sang Google Sheet ngay lập tức
+// Tải toàn bộ phiếu từ Google Sheet về Dashboard (Kéo dữ liệu)
+app.post('/api/admin/pull-google-sheet', requireAdmin, async (req, res) => {
+  try {
+    const clientWebhook = req.body?.webhookUrl || req.headers['x-google-sheet-webhook'] || req.query.gsheet_webhook;
+    if (clientWebhook) {
+      settingsManager.syncClientWebhook(clientWebhook);
+    }
+    const webhookUrl = clientWebhook || googleSheetSync.getWebhookUrl();
+    if (!webhookUrl) {
+      return res.status(400).json({ success: false, message: 'Chưa cấu hình Google Sheet Webhook URL!' });
+    }
+
+    const result = await googleSheetSync.fetchAllSurveysFromSheet(webhookUrl);
+    if (!result.success) {
+      return res.status(400).json({ success: false, message: result.reason || result.error || 'Không thể tải dữ liệu từ Google Sheet.' });
+    }
+
+    let inserted = 0;
+    if (Array.isArray(result.surveys) && result.surveys.length > 0) {
+      inserted = db.insertManySurveys(result.surveys);
+    }
+
+    const totalNow = db.getSurveyCount();
+    res.json({
+      success: true,
+      count: result.surveys ? result.surveys.length : 0,
+      inserted,
+      totalNow,
+      sheetName: result.sheetName || 'Trang tính Google Sheet',
+      message: `Đã nạp thành công ${inserted} phiếu từ Google Sheet vào hệ thống! Tổng số phiếu hiện có: ${totalNow} phiếu.`
+    });
+  } catch (err) {
+    console.error('Google Sheet Pull Error:', err);
+    res.status(500).json({ success: false, message: err.message || 'Lỗi khi kéo dữ liệu từ Google Sheet.' });
+  }
+});
+
+// Đồng bộ dữ liệu khảo sát (Đẩy sang Google Sheet hoặc tự động kéo nếu máy chủ đang trống)
 app.post('/api/admin/sync-google-sheet', requireAdmin, async (req, res) => {
   try {
+    const clientWebhook = req.body?.webhookUrl || req.headers['x-google-sheet-webhook'] || req.query.gsheet_webhook;
+    if (clientWebhook) {
+      settingsManager.syncClientWebhook(clientWebhook);
+    }
+    const webhookUrl = clientWebhook || googleSheetSync.getWebhookUrl();
+
     const allSurveys = db.getAllSurveys();
+
+    // Nếu hệ thống hiện chưa có phiếu nào nhưng Google Sheet có phiếu, tự động kéo về thay vì gửi 0 phiếu sang đè!
+    if (allSurveys.length === 0 && webhookUrl) {
+      const pullResult = await googleSheetSync.fetchAllSurveysFromSheet(webhookUrl);
+      if (pullResult.success && Array.isArray(pullResult.surveys) && pullResult.surveys.length > 0) {
+        const inserted = db.insertManySurveys(pullResult.surveys);
+        const totalNow = db.getSurveyCount();
+        return res.json({
+          success: true,
+          mode: 'pull',
+          count: pullResult.surveys.length,
+          inserted,
+          totalNow,
+          message: `Phát hiện Google Sheet có ${pullResult.surveys.length} phiếu, hệ thống đã tự động nạp vào Dashboard! Tổng số phiếu: ${totalNow}.`
+        });
+      }
+    }
+
     const result = await googleSheetSync.syncAllSurveys(allSurveys);
     res.json({
       success: true,
+      mode: 'push',
       count: allSurveys.length,
       data: result,
       message: `Đã đồng bộ ${allSurveys.length} phiếu sang Google Sheet thành công!`

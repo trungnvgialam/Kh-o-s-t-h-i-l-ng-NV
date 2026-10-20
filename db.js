@@ -176,9 +176,13 @@ function parseToIso(val) {
 }
 
 // Helper chuyển từ Object Survey sang Row SQLite
-function surveyToRow(s) {
+function surveyToRow(s, index = 0) {
+  let id = s.id ? String(s.id).trim() : '';
+  if (!id) {
+    id = `NV-GS-${String(index + 1).padStart(4, '0')}`;
+  }
   return {
-    id: s.id,
+    id,
     submitted_at: parseToIso(s.submittedAt),
     department: s.demographics?.department || 'other',
     role: s.demographics?.role || 'other',
@@ -401,19 +405,38 @@ function insertSurvey(survey) {
 }
 
 /**
- * Thêm hàng loạt phiếu khảo sát (Dùng Transaction siêu tốc cho Mock Data)
+ * Thêm hàng loạt phiếu khảo sát (Dùng Transaction siêu tốc cho Mock Data & Google Sheet Sync)
  */
 function insertManySurveys(surveyList) {
+  if (!Array.isArray(surveyList) || surveyList.length === 0) return 0;
   if (isServerless && fs.existsSync(CLEARED_MARKER)) {
     try { fs.unlinkSync(CLEARED_MARKER); } catch (_) {}
   }
+  let count = 0;
   const insertManyTx = db.transaction((list) => {
+    let idx = 0;
+    const seenIds = new Set();
     for (const s of list) {
-      insertStmt.run(surveyToRow(s));
+      if (!s) continue;
+      idx++;
+      try {
+        let sid = s.id ? String(s.id).trim() : '';
+        if (!sid || seenIds.has(sid)) {
+          sid = `NV-GS-${String(idx).padStart(4, '0')}`;
+          s.id = sid;
+        }
+        seenIds.add(sid);
+        const row = surveyToRow(s, idx);
+        insertStmt.run(row);
+        count++;
+      } catch (err) {
+        console.warn(`[db.insertManySurveys] Bỏ qua bản ghi lỗi (${s?.id}):`, err.message);
+      }
     }
   });
   insertManyTx(surveyList);
   scheduleBackupSync();
+  return count;
 }
 
 /**
