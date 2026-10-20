@@ -117,6 +117,22 @@ function setGoogleSheetWebhookUrl(url) {
 }
 
 /**
+ * Tự động đồng bộ Webhook URL từ client header/query nếu serverless container chưa có
+ */
+function syncClientWebhook(clientWebhook) {
+  const url = String(clientWebhook || '').trim();
+  if (url && (url.startsWith('https://script.google.com') || url.startsWith('http'))) {
+    const current = getGoogleSheetWebhookUrl();
+    if (!current || current !== url) {
+      setGoogleSheetWebhookUrl(url);
+      return url;
+    }
+    return current;
+  }
+  return getGoogleSheetWebhookUrl();
+}
+
+/**
  * Mật khẩu mặc định an toàn chuẩn y tế (Chứa chữ hoa, chữ thường, số, ký tự @)
  * Tuyệt đối không bị Google Chrome cảnh báo rò rỉ dữ liệu (compromised password)
  */
@@ -187,6 +203,7 @@ module.exports = {
   syncClientTarget,
   getGoogleSheetWebhookUrl,
   setGoogleSheetWebhookUrl,
+  syncClientWebhook,
   getAdminPassword,
   setAdminPassword,
   verifyAdminPassword,

@@ -65,7 +65,119 @@ var HEADERS = [
   "Ý Kiến Đóng Góp / Hiến Kế"
 ];
 
+// Bảng ánh xạ ngược từ Tiếng Việt sang mã code chuẩn cho hệ thống Vercel / Dashboard
+var REVERSE_MAP = {
+  // Khoa / Khối
+  "Khối Lâm sàng Nội": "noi",
+  "Khối Lâm sàng Ngoại": "ngoai",
+  "Khối Khám bệnh & Cấp cứu": "capcuu",
+  "Khối Cận lâm sàng & Dược": "canlamsang",
+  "Khối Phòng ban chức năng": "hanhchinh",
+  
+  // Chức danh
+  "Bác sĩ / Bác sĩ CKI-CKII": "bacsi",
+  "Điều dưỡng / Hộ sinh": "dieuduong",
+  "Kỹ thuật viên y tế": "kythuatvien",
+  "Dược sĩ": "duocsi",
+  "Cán bộ QL / Hành chính": "quanly_hanhchinh",
+  "Hộ lý / Y công / Hỗ trợ": "hotro",
+  
+  // Thâm niên
+  "Dưới 2 năm": "duoi2",
+  "Từ 2 đến 5 năm": "tu2den5",
+  "Từ 5 đến 10 năm": "tu5den10",
+  "Trên 10 năm": "tren10",
+  
+  // Giới tính
+  "Nam": "nam",
+  "Nữ": "nu",
+  "Không nêu": "khac",
+  
+  // Trình độ
+  "Trung cấp / Cao đẳng": "trungcap_caodang",
+  "Đại học": "daihoc",
+  "Sau đại học (ThS, CKI, CKII, TS)": "saudaihoc",
+  
+  // Gắn bó
+  "Chắc chắn gắn bó lâu dài": "chac_chan",
+  "Có thể gắn bó": "co_the",
+  "Đang phân vân": "phan_van",
+  "Dự định chuyển nơi khác": "du_dinh_chuyen"
+};
+
+// Chuyển 1 dòng trong Google Sheet thành Object Survey chuẩn
+function rowArrayToSurvey(r) {
+  if (!r || !r[0]) return null;
+  var deptVal = String(r[2] || "").trim();
+  var roleVal = String(r[3] || "").trim();
+  var expVal = String(r[4] || "").trim();
+  var genderVal = String(r[5] || "").trim();
+  var degreeVal = String(r[6] || "").trim();
+  var commitVal = String(r[31] || "").trim();
+
+  var subAt = r[1];
+  if (subAt instanceof Date) {
+    subAt = subAt.toISOString();
+  } else {
+    subAt = String(subAt || new Date().toISOString());
+  }
+
+  return {
+    id: String(r[0]).trim(),
+    submittedAt: subAt,
+    demographics: {
+      department: REVERSE_MAP[deptVal] || deptVal || "other",
+      role: REVERSE_MAP[roleVal] || roleVal || "other",
+      experience: REVERSE_MAP[expVal] || expVal || "other",
+      gender: REVERSE_MAP[genderVal] || genderVal || "khac",
+      degree: REVERSE_MAP[degreeVal] || degreeVal || "other"
+    },
+    answers: {
+      a1: Number(r[7]) || 3, a2: Number(r[8]) || 3, a3: Number(r[9]) || 3, a4: Number(r[10]) || 3, a5: Number(r[11]) || 3,
+      b1: Number(r[12]) || 3, b2: Number(r[13]) || 3, b3: Number(r[14]) || 3, b4: Number(r[15]) || 3, b5: Number(r[16]) || 3,
+      c1: Number(r[17]) || 3, c2: Number(r[18]) || 3, c3: Number(r[19]) || 3, c4: Number(r[20]) || 3, c5: Number(r[21]) || 3,
+      d1: Number(r[22]) || 3, d2: Number(r[23]) || 3, d3: Number(r[24]) || 3, d4: Number(r[25]) || 3,
+      e1: Number(r[26]) || 3, e2: Number(r[27]) || 3, e3: Number(r[28]) || 3, e4: Number(r[29]) || 3
+    },
+    overall: {
+      score: Number(r[30]) || 8,
+      commitment: REVERSE_MAP[commitVal] || commitVal || "chac_chan",
+      enps: Number(r[32]) || 8,
+      suggestions: String(r[33] || "")
+    }
+  };
+}
+
+// Hàm đọc toàn bộ phiếu từ Google Sheet trả về cho Vercel
+function getAllSurveysFromSheet(sheet) {
+  var lastRow = sheet.getLastRow();
+  if (lastRow <= 1) {
+    return [];
+  }
+  var values = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
+  var surveys = [];
+  for (var i = 0; i < values.length; i++) {
+    var s = rowArrayToSurvey(values[i]);
+    if (s && s.id) surveys.push(s);
+  }
+  return surveys;
+}
+
 function doGet(e) {
+  var action = (e && e.parameter && e.parameter.action) || 'status';
+
+  // Yêu cầu lấy toàn bộ dữ liệu phiếu về cho Vercel Dashboard
+  if (action === 'get_all' || action === 'get_surveys') {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getActiveSheet();
+    var surveys = getAllSurveysFromSheet(sheet);
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      count: surveys.length,
+      surveys: surveys
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
   return ContentService.createTextOutput(JSON.stringify({
     success: true,
     service: "Hệ thống Khảo sát Hài lòng Y tế (500 NV)",
@@ -99,7 +211,29 @@ function doPost(e) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // 2. Đồng bộ hàng loạt toàn bộ danh sách phiếu
+    // 2. Lấy toàn bộ phiếu về máy chủ
+    if (data.action === 'get_all') {
+      var allSurveys = getAllSurveysFromSheet(sheet);
+      return ContentService.createTextOutput(JSON.stringify({
+        success: true,
+        count: allSurveys.length,
+        surveys: allSurveys
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // 3. Xóa toàn bộ phiếu (Khi Admin bấm Làm mới dữ liệu)
+    if (data.action === 'clear_all') {
+      var lastRow = sheet.getLastRow();
+      if (lastRow > 1) {
+        sheet.getRange(2, 1, lastRow - 1, HEADERS.length).clearContent();
+      }
+      return ContentService.createTextOutput(JSON.stringify({
+        success: true,
+        message: "Đã xóa toàn bộ phiếu trên Google Sheet!"
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // 4. Đồng bộ hàng loạt toàn bộ danh sách phiếu
     if (data.action === 'sync_all' && Array.isArray(data.surveys)) {
       var surveys = data.surveys;
       if (surveys.length === 0) {
@@ -128,7 +262,7 @@ function doPost(e) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // 3. Ghi 1 phiếu mới tự động nộp thời gian thực
+    // 5. Ghi 1 phiếu mới tự động nộp thời gian thực
     var survey = data.survey || data;
     var rowValues = surveyToRowArray(survey);
     sheet.appendRow(rowValues);

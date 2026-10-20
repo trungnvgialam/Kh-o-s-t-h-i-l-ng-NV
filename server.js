@@ -310,7 +310,7 @@ app.post('/api/admin/reset-password', (req, res) => {
 });
 
 // API: Submit a response (Thread-safe, Concurrency-proof, Validated & Sanitized)
-app.post('/api/submit', (req, res) => {
+app.post('/api/submit', async (req, res) => {
   try {
     const body = req.body;
     if (!body || !body.demographics || !body.answers) {
@@ -356,10 +356,17 @@ app.post('/api/submit', (req, res) => {
     // Lưu trực tiếp vào SQLite chuẩn ACID (WAL mode, non-blocking, atomic sequential ID)
     const saved = db.insertSurvey(submission);
 
-    // Tự động đẩy ngầm (Real-time Async) sang Google Sheet (nếu đã cấu hình)
-    googleSheetSync.syncSurveyAsync(saved).catch(err => {
-      console.warn('[GoogleSheetSync Error]:', err.message);
-    });
+    // Tự động đẩy sang Google Sheet (Bắt buộc await với timeout 4s để Vercel không đóng băng container trước khi lưu xong)
+    if (googleSheetSync.getWebhookUrl()) {
+      try {
+        await Promise.race([
+          googleSheetSync.syncSurveyAsync(saved),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Google Sheet sync timeout')), 4000))
+        ]);
+      } catch (sheetErr) {
+        console.warn('[GoogleSheetSync Submit Warning]:', sheetErr.message);
+      }
+    }
 
     res.json({
       success: true,

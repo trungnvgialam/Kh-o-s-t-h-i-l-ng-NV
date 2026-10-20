@@ -222,11 +222,61 @@ async function testWebhook(customUrl = null) {
   }
 }
 
+/**
+ * Lấy toàn bộ phiếu khảo sát từ Google Sheet về máy chủ Vercel / Local
+ */
+async function fetchAllSurveysFromSheet(customUrl = null) {
+  const webhookUrl = (customUrl || getWebhookUrl() || '').trim();
+  if (!webhookUrl) {
+    return { success: false, reason: 'Chưa cấu hình Google Sheet Webhook URL', surveys: [] };
+  }
+
+  try {
+    const url = webhookUrl + (webhookUrl.includes('?') ? '&' : '?') + 'action=get_all';
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+      redirect: 'follow'
+    });
+
+    const text = await response.text();
+    const data = JSON.parse(text);
+    if (data && data.success && Array.isArray(data.surveys)) {
+      return { success: true, count: data.surveys.length, surveys: data.surveys };
+    }
+    return { success: false, reason: data?.message || 'Phản hồi không hợp lệ', surveys: [] };
+  } catch (err) {
+    console.warn('[GoogleSheetSync] Lỗi đọc dữ liệu từ Google Sheet:', err.message);
+    return { success: false, error: err.message, surveys: [] };
+  }
+}
+
+/**
+ * Xóa toàn bộ phiếu trên Google Sheet khi Admin reset đợt khảo sát
+ */
+async function clearAllSurveysOnSheet() {
+  const webhookUrl = getWebhookUrl();
+  if (!webhookUrl) return;
+  try {
+    await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'clear_all' }),
+      redirect: 'follow'
+    });
+  } catch (err) {
+    console.warn('[GoogleSheetSync] Lỗi xóa phiếu trên Google Sheet:', err.message);
+  }
+}
+
 module.exports = {
   getWebhookUrl,
   setWebhookUrl,
   formatSurveyForSheet,
   syncSurveyAsync,
   syncAllSurveys,
-  testWebhook
+  testWebhook,
+  fetchAllSurveysFromSheet,
+  clearAllSurveysOnSheet
 };
+
