@@ -249,45 +249,50 @@ async function fetchAllSurveysFromSheet(customUrl = null) {
     };
   }
 
+  // Ưu tiên dùng POST trước vì Google Apps Script xử lý POST chuẩn JSON 100% không bị redirect lỗi HTML
   try {
-    const url = webhookUrl + (webhookUrl.includes('?') ? '&' : '?') + 'action=get_all&_t=' + Date.now();
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: { 'Accept': 'application/json' },
-      redirect: 'follow'
-    });
+    let data = null;
+    let postText = '';
 
-    const text = await response.text();
-
-    // Nhận diện lỗi trả về trang web HTML (do chưa cấp quyền "Bất kỳ ai" hoặc lỗi script)
-    if (text.trim().startsWith('<') || text.includes('<!DOCTYPE html>') || text.includes('<html')) {
-      if (text.includes('accounts.google.com') || text.includes('ServiceLogin')) {
-        return {
-          success: false,
-          reason: 'Google Apps Script chưa mở quyền truy cập công khai! Vui lòng vào Apps Script ➔ Triển khai lại ➔ Đặt "Ai có quyền truy cập" (Who has access) thành "Bất kỳ ai" (Anyone).',
-          surveys: []
-        };
-      }
-      return {
-        success: false,
-        reason: 'Google Apps Script trả về lỗi HTML thay vì JSON. Vui lòng mở lại file GOOGLE_SHEET_APPS_SCRIPT.js, dán lại toàn bộ mã và Triển khai phiên bản mới.',
-        surveys: []
-      };
-    }
-
-    let data;
     try {
-      data = JSON.parse(text);
-    } catch (_) {
-      // Fallback: Thử gọi POST nếu GET bị lỗi phân tích cú pháp
       const postResp = await fetch(webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'get_all', timestamp: Date.now() }),
         redirect: 'follow'
       });
-      const postText = await postResp.text();
+      postText = await postResp.text();
       data = JSON.parse(postText);
+    } catch (_) {
+      // Nếu POST không thành công, thử fallback sang GET
+      try {
+        const url = webhookUrl + (webhookUrl.includes('?') ? '&' : '?') + 'action=get_all&_t=' + Date.now();
+        const getResp = await fetch(url, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' },
+          redirect: 'follow'
+        });
+        const getText = await getResp.text();
+        data = JSON.parse(getText);
+      } catch (getErr) {
+        // Cả POST và GET đều không parse được JSON -> Phân tích xem có phải trang HTML lỗi của Google không
+        const sampleText = postText || '';
+        if (sampleText.trim().startsWith('<') || sampleText.includes('<!DOCTYPE html>') || sampleText.includes('<html')) {
+          if (sampleText.includes('accounts.google.com') || sampleText.includes('ServiceLogin')) {
+            return {
+              success: false,
+              reason: 'Google Apps Script chưa mở quyền truy cập công khai! Vui lòng vào Apps Script ➔ Triển khai lại ➔ Đặt "Ai có quyền truy cập" thành "Bất kỳ ai" (Anyone).',
+              surveys: []
+            };
+          }
+          return {
+            success: false,
+            reason: 'Google Apps Script trả về lỗi HTML thay vì JSON. Vui lòng mở lại file GOOGLE_SHEET_APPS_SCRIPT.js, dán lại toàn bộ mã và Triển khai phiên bản mới.',
+            surveys: []
+          };
+        }
+        return { success: false, reason: 'Không thể phân tích dữ liệu trả về từ Google Sheet.', surveys: [] };
+      }
     }
 
     if (data && data.success && Array.isArray(data.surveys)) {

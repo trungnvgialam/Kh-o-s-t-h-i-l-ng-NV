@@ -357,15 +357,8 @@ function getAllSurveysFromSheet(sheet) {
     return [];
   }
 
-  // Tự động mở rộng số cột nếu sheet chưa đủ 34 cột
-  var maxCols = sheet.getMaxColumns();
-  if (maxCols < HEADERS.length) {
-    sheet.insertColumnsAfter(maxCols, HEADERS.length - maxCols);
-  }
-
-  var lastCol = sheet.getLastColumn();
-  var readCols = Math.min(Math.max(lastCol, HEADERS.length), sheet.getMaxColumns());
-  var allValues = sheet.getRange(1, 1, lastRow, readCols).getValues();
+  var lastCol = Math.max(sheet.getLastColumn(), 1);
+  var allValues = sheet.getRange(1, 1, lastRow, lastCol).getValues();
   if (!allValues || allValues.length <= 1) return [];
 
   var headerRow = allValues[0];
