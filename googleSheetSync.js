@@ -166,8 +166,8 @@ async function syncSurveyAsync(survey, customWebhookUrl = null) {
 /**
  * Đồng bộ toàn bộ danh sách phiếu hiện có sang Google Sheet
  */
-async function syncAllSurveys(surveys) {
-  const webhookUrl = getWebhookUrl();
+async function syncAllSurveys(surveys, customWebhookUrl = null) {
+  const webhookUrl = (customWebhookUrl || getWebhookUrl() || '').trim();
   if (!webhookUrl) {
     throw new Error('Chưa cấu hình liên kết Google Sheet Webhook!');
   }

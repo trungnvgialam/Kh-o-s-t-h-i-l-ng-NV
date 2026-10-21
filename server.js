@@ -1025,7 +1025,7 @@ app.post('/api/admin/sync-google-sheet', requireAdmin, async (req, res) => {
       }
     }
 
-    const result = await googleSheetSync.syncAllSurveys(allSurveys);
+    const result = await googleSheetSync.syncAllSurveys(allSurveys, webhookUrl);
     res.json({
       success: true,
       mode: 'push',
