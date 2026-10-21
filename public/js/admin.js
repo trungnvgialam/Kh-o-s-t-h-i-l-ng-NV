@@ -1329,6 +1329,10 @@ function setupGoogleSheetSyncEvents() {
   // Lưu cấu hình URL Webhook
   btnSave?.addEventListener('click', async () => {
     const webhookUrl = (gsheetInput?.value || '').trim();
+    if (webhookUrl && webhookUrl.includes('...')) {
+      showAlert('Đường link Webhook bị thiếu (chứa dấu "..."). Link chuẩn dài khoảng 70-100 ký tự. Vui lòng bấm nút "Sao chép" (Copy) trong Google Apps Script để lấy link đầy đủ.', false);
+      return;
+    }
     hideAlert();
     btnSave.disabled = true;
     btnSave.innerText = 'Đang lưu...';
@@ -1347,7 +1351,7 @@ function setupGoogleSheetSyncEvents() {
       });
       const data = await res.json();
       if (data.success) {
-        showAlert('Đã lưu cấu hình Google Sheet Webhook! Đang tự động kéo dữ liệu về...', true);
+        showAlert('Đã lưu cấu hình Google Sheet Webhook thành công!', true);
         if (statusBadge) {
           if (data.configured) {
             statusBadge.style.background = '#ecfdf5';
@@ -1369,8 +1373,8 @@ function setupGoogleSheetSyncEvents() {
               body: JSON.stringify({ webhookUrl })
             });
             const pullData = await pullRes.json();
-            if (pullData.success) {
-              showAlert(`🎉 ${pullData.message}`, true);
+            if (pullData.success && pullData.count > 0) {
+              showAlert(`🎉 Đã lưu cấu hình và đồng bộ ${pullData.count} phiếu từ Google Sheet!`, true);
             }
           } catch (_) {}
         }
@@ -1394,6 +1398,10 @@ function setupGoogleSheetSyncEvents() {
     const webhookUrl = (gsheetInput?.value || '').trim();
     if (!webhookUrl) {
       showAlert('Vui lòng dán liên kết Google Apps Script Webhook URL trước khi kiểm tra.', false);
+      return;
+    }
+    if (webhookUrl.includes('...')) {
+      showAlert('Đường link Webhook bị thiếu (chứa dấu "..."). Link chuẩn dài khoảng 70-100 ký tự. Vui lòng bấm nút "Sao chép" (Copy) trong Google Apps Script để lấy link đầy đủ.', false);
       return;
     }
 
@@ -1435,6 +1443,10 @@ function setupGoogleSheetSyncEvents() {
     const webhookUrl = (gsheetInput?.value || '').trim();
     if (!webhookUrl) {
       showAlert('Vui lòng dán và lưu Webhook URL trước khi đồng bộ dữ liệu.', false);
+      return;
+    }
+    if (webhookUrl.includes('...')) {
+      showAlert('Đường link Webhook bị thiếu (chứa dấu "..."). Link chuẩn dài khoảng 70-100 ký tự. Vui lòng bấm nút "Sao chép" (Copy) trong Google Apps Script để lấy link đầy đủ.', false);
       return;
     }
 
