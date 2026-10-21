@@ -499,17 +499,18 @@ function doPost(e) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // 5. Ghi 1 phiếu mới tự động nộp thời gian thực
+    // 5. Ghi 1 phiếu mới tự động nộp thời gian thực (Điền chính xác vào dòng trống đầu tiên tại Cột A)
     var survey = data.survey || data;
     var rowValues = surveyToRowArray(survey);
-    sheet.appendRow(rowValues);
-    var newRowIdx = sheet.getLastRow();
-    formatRowAppearance(sheet, newRowIdx);
+    var targetRow = findRowForSurvey(sheet, survey.id);
+    sheet.getRange(targetRow, 1, 1, rowValues.length).setValues([rowValues]);
+    formatRowAppearance(sheet, targetRow);
 
     return ContentService.createTextOutput(JSON.stringify({
       success: true,
       id: survey.id,
-      message: "Đã lưu phiếu " + survey.id + " vào Google Sheet thành công!"
+      row: targetRow,
+      message: "Đã lưu phiếu " + survey.id + " vào Google Sheet thành công tại dòng " + targetRow + "!"
     })).setMimeType(ContentService.MimeType.JSON);
 
   } catch (err) {
@@ -520,6 +521,41 @@ function doPost(e) {
   } finally {
     lock.releaseLock();
   }
+}
+
+// Tìm dòng đích để ghi phiếu: ưu tiên cập nhật dòng có cùng mã ID, hoặc điền vào dòng trống đầu tiên của Cột A
+function findRowForSurvey(sheet, surveyId) {
+  var maxRows = sheet.getMaxRows();
+  if (maxRows <= 1) {
+    sheet.insertRowsAfter(maxRows, 50);
+    return 2;
+  }
+
+  // Đọc toàn bộ Cột A (Mã Phiếu) để tìm chính xác dòng trống hoặc dòng có ID trùng
+  var colA = sheet.getRange(1, 1, maxRows, 1).getValues();
+  var firstEmpty = -1;
+  var targetId = surveyId ? String(surveyId).trim().toUpperCase() : '';
+
+  for (var r = 1; r < colA.length; r++) { // Bắt đầu từ dòng 2 (index 1)
+    var val = colA[r][0];
+    var strVal = (val !== null && val !== undefined) ? String(val).trim().toUpperCase() : '';
+
+    if (targetId && strVal === targetId) {
+      return r + 1; // Cập nhật đúng dòng đã có ID này (tránh nhân bản)
+    }
+
+    if (firstEmpty === -1 && strVal === '') {
+      firstEmpty = r + 1;
+    }
+  }
+
+  if (firstEmpty !== -1) {
+    return firstEmpty;
+  }
+
+  // Nếu tất cả các dòng hiện có đều đã có dữ liệu, thêm 10 dòng mới
+  sheet.insertRowsAfter(maxRows, 10);
+  return maxRows + 1;
 }
 
 // Chuyển đối tượng khảo sát sang mảng 34 cột
@@ -569,17 +605,22 @@ function surveyToRowArray(s) {
   ];
 }
 
-// Tự động định dạng các cột số và căn giữa hàng dữ liệu
+// Tự động định dạng các cột số và căn giữa hàng dữ liệu (Tối ưu hóa gom 1 lần gọi duy nhất - Siêu tốc)
 function formatRowAppearance(sheet, rowIndex) {
   try {
-    sheet.getRange(rowIndex, 1, 1, HEADERS.length).setVerticalAlignment("middle");
-    sheet.getRange(rowIndex, 1).setHorizontalAlignment("center"); // Mã Phiếu
-    sheet.getRange(rowIndex, 2).setHorizontalAlignment("center"); // Thời Gian Nộp
-    sheet.getRange(rowIndex, 5).setHorizontalAlignment("center"); // Thâm Niên
-    sheet.getRange(rowIndex, 6).setHorizontalAlignment("center"); // Giới Tính
-    sheet.getRange(rowIndex, 8, 1, 23).setHorizontalAlignment("center"); // 23 tiêu chí Likert (1-5)
-    sheet.getRange(rowIndex, 31).setHorizontalAlignment("center"); // Điểm hài lòng (1-10)
-    sheet.getRange(rowIndex, 33).setHorizontalAlignment("center"); // eNPS
+    var rowRange = sheet.getRange(rowIndex, 1, 1, HEADERS.length);
+    rowRange.setVerticalAlignment("middle");
+    
+    var rowAlign = [];
+    for (var i = 0; i < HEADERS.length; i++) {
+      // Căn giữa: Cột 1 (Mã phiếu), Cột 2 (Thời gian), Cột 5 (Thâm niên), Cột 6 (Giới tính), Cột 8-30 (Likert), Cột 31 (Điểm chung), Cột 33 (eNPS)
+      if (i === 0 || i === 1 || i === 4 || i === 5 || (i >= 7 && i <= 29) || i === 30 || i === 32) {
+        rowAlign.push("center");
+      } else {
+        rowAlign.push("left");
+      }
+    }
+    rowRange.setHorizontalAlignments([rowAlign]);
     sheet.setRowHeight(rowIndex, 26);
   } catch (_) {}
 }

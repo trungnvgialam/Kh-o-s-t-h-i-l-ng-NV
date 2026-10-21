@@ -297,7 +297,7 @@ function updateQrDisplay() {
   }
 
   const qrInput = document.getElementById('qr-survey-url-input');
-  if (qrInput) qrInput.value = activeUrl;
+  if (qrInput) qrInput.value = qrTargetUrl;
 
   const btnTunnel = document.getElementById('btn-mode-tunnel');
   const btnLocal = document.getElementById('btn-mode-local');

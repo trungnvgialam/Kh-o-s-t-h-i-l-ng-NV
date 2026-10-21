@@ -364,19 +364,19 @@ app.post('/api/submit', async (req, res) => {
     }
     const effectiveWebhookUrl = clientWebhook || googleSheetSync.getWebhookUrl();
 
-    // Tự động đẩy sang Google Sheet (Bắt buộc await với timeout 5s để Vercel không đóng băng container trước khi lưu xong)
+    // Tự động đẩy sang Google Sheet (Bắt buộc await với timeout 12s để Vercel không đóng băng container trước khi lưu xong)
     if (effectiveWebhookUrl) {
       try {
         await Promise.race([
           googleSheetSync.syncSurveyAsync(saved, effectiveWebhookUrl),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Google Sheet sync timeout')), 5000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Google Sheet sync timeout sau 12 giây')), 12000))
         ]);
         console.log(`[Submit] Đã đồng bộ phiếu ${saved.id} sang Google Sheet thành công.`);
       } catch (sheetErr) {
         console.warn('[GoogleSheetSync Submit Warning]:', sheetErr.message);
       }
     } else {
-      console.warn(`[Submit] Phiếu ${saved.id} đã lưu SQLite, nhưng CHƯA thể đẩy sang Google Sheet do hệ thống chưa có Webhook URL.`);
+      console.warn(`[Submit] Phiếu ${saved.id} đã lưu, nhưng CHƯA thể đẩy sang Google Sheet do máy chủ chưa nhận diện được Webhook URL.`);
     }
 
     res.json({
