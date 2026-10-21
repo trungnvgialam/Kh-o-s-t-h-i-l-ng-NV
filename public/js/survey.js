@@ -26,12 +26,28 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   let serverGSheetWebhook = '';
+  // Kiểm tra nếu đường link có chứa tham số Webhook (Ví dụ quét từ mã QR)
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const paramWebhook = urlParams.get('gsw') || urlParams.get('gsheet') || urlParams.get('gsheet_webhook');
+    if (paramWebhook && !paramWebhook.includes('...')) {
+      serverGSheetWebhook = decodeURIComponent(paramWebhook).trim();
+      localStorage.setItem('client_gsheet_webhook', serverGSheetWebhook);
+    } else {
+      const cached = localStorage.getItem('client_gsheet_webhook') || localStorage.getItem('admin_gsheet_webhook') || '';
+      if (cached && !cached.includes('...')) {
+        serverGSheetWebhook = cached.trim();
+      }
+    }
+  } catch (_) {}
+
   // Tải cấu hình máy chủ để lấy Google Sheet Webhook URL (nếu có)
   fetch('/api/config')
     .then(r => r.json())
     .then(cfg => {
-      if (cfg && cfg.googleSheetWebhookUrl) {
-        serverGSheetWebhook = cfg.googleSheetWebhookUrl;
+      if (cfg && cfg.googleSheetWebhookUrl && !cfg.googleSheetWebhookUrl.includes('...')) {
+        serverGSheetWebhook = cfg.googleSheetWebhookUrl.trim();
+        try { localStorage.setItem('client_gsheet_webhook', serverGSheetWebhook); } catch (_) {}
       }
     })
     .catch(() => {});
@@ -641,7 +657,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-      const webhookUrl = serverGSheetWebhook || localStorage.getItem('admin_gsheet_webhook') || '';
+      const webhookUrl = serverGSheetWebhook || localStorage.getItem('client_gsheet_webhook') || localStorage.getItem('admin_gsheet_webhook') || '';
       const payload = {
         ...state,
         webhookUrl

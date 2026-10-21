@@ -285,9 +285,16 @@ function updateQrDisplay() {
   if (!systemConfig) return;
   const hasTunnel = Boolean(systemConfig.tunnelUrl);
   const isTunnel = currentQrMode === 'tunnel' && hasTunnel;
-  const activeUrl = isTunnel 
+  let activeUrl = isTunnel 
     ? systemConfig.tunnelUrl 
     : (systemConfig.networkUrl || systemConfig.localUrl || window.location.origin);
+
+  const webhookUrl = (localStorage.getItem('admin_gsheet_webhook') || systemConfig.googleSheetWebhookUrl || '').trim();
+  let qrTargetUrl = activeUrl;
+  if (webhookUrl && !webhookUrl.includes('...')) {
+    const sep = qrTargetUrl.includes('?') ? '&' : '?';
+    qrTargetUrl = `${qrTargetUrl}${sep}gsw=${encodeURIComponent(webhookUrl)}`;
+  }
 
   const qrInput = document.getElementById('qr-survey-url-input');
   if (qrInput) qrInput.value = activeUrl;
@@ -316,8 +323,7 @@ function updateQrDisplay() {
     if (btnLocal) { btnLocal.className = 'btn-action-primary'; }
   }
 
-
-  renderQrCode(activeUrl);
+  renderQrCode(qrTargetUrl);
 }
 
 
