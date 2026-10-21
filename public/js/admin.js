@@ -1245,12 +1245,21 @@ function setupGoogleSheetSyncEvents() {
       });
       const data = await res.json();
       if (data.success) {
-        const localSaved = localStorage.getItem('admin_gsheet_webhook') || '';
-        const effectiveUrl = (data.webhookUrl || localSaved || '').trim();
+        let localSaved = (localStorage.getItem('admin_gsheet_webhook') || '').trim();
+        if (localSaved.includes('...')) {
+          localStorage.removeItem('admin_gsheet_webhook');
+          localSaved = '';
+        }
+        let serverUrl = (data.webhookUrl || '').trim();
+        if (serverUrl.includes('...')) {
+          serverUrl = '';
+        }
+
+        const effectiveUrl = serverUrl || localSaved || '';
         if (gsheetInput) gsheetInput.value = effectiveUrl;
 
         // Nếu client có URL nhưng server chưa có (do Vercel cold-start), tự động đồng bộ lên server
-        if (localSaved && !data.webhookUrl) {
+        if (localSaved && !serverUrl) {
           fetch('/api/admin/google-sheet-config', {
             method: 'POST',
             headers: getAuthHeaders(),
@@ -1274,6 +1283,23 @@ function setupGoogleSheetSyncEvents() {
       console.warn('Lỗi tải cấu hình Google Sheet:', err);
     }
   }
+
+  // Tự động lưu ngay khi người dùng dán hoặc gõ URL (chống mất khi đóng modal)
+  gsheetInput?.addEventListener('input', (e) => {
+    const val = (e.target.value || '').trim();
+    if (val && !val.includes('...')) {
+      localStorage.setItem('admin_gsheet_webhook', val);
+    }
+  });
+
+  gsheetInput?.addEventListener('paste', () => {
+    setTimeout(() => {
+      const val = (gsheetInput.value || '').trim();
+      if (val && !val.includes('...')) {
+        localStorage.setItem('admin_gsheet_webhook', val);
+      }
+    }, 50);
+  });
 
   btnOpenGSheet?.addEventListener('click', () => {
     if (gsheetModal) gsheetModal.classList.add('active');
