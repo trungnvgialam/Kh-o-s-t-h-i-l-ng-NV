@@ -1295,6 +1295,10 @@ function setupGoogleSheetSyncEvents() {
       showAlert('Vui lòng dán liên kết Google Apps Script Webhook URL trước khi tải dữ liệu.', false);
       return;
     }
+    if (webhookUrl.includes('...')) {
+      showAlert('Đường link Webhook bị thiếu (chứa dấu "..."). Link chuẩn dài khoảng 70-100 ký tự. Vui lòng bấm nút "Sao chép" (Copy) trong Google Apps Script để lấy link đầy đủ.', false);
+      return;
+    }
 
     hideAlert();
     btnPull.disabled = true;

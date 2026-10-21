@@ -203,6 +203,10 @@ async function testWebhook(customUrl = null) {
     throw new Error('Vui lòng nhập đường dẫn Google Apps Script Webhook URL.');
   }
 
+  if (targetUrl.includes('...')) {
+    throw new Error('Đường link Webhook bị thiếu (chứa dấu ba chấm "..."). Link chuẩn của Google dài khoảng 70-100 ký tự (Ví dụ: https://script.google.com/macros/s/AKfycbx...ABC123/exec). Vui lòng vào Apps Script ➔ Bấm nút "Sao chép" (Copy) để lấy toàn bộ đường link đầy đủ!');
+  }
+
   const payload = {
     action: 'test',
     timestamp: new Date().toISOString()
@@ -216,10 +220,25 @@ async function testWebhook(customUrl = null) {
   });
 
   const text = await response.text();
+
+  if (text.trim().startsWith('<') || text.includes('<!DOCTYPE html>') || text.includes('<html')) {
+    if (text.includes('accounts.google.com') || text.includes('ServiceLogin')) {
+      throw new Error('Google Apps Script chưa mở quyền công khai! Vui lòng vào Apps Script ➔ Triển khai lại ➔ Đặt "Ai có quyền truy cập" thành "Bất kỳ ai" (Anyone).');
+    }
+    throw new Error('Google Apps Script trả về lỗi HTML thay vì JSON. Đường link có thể bị sai hoặc script chưa được Triển khai (Deploy) đúng cách.');
+  }
+
   try {
-    return JSON.parse(text);
-  } catch (_) {
-    return { success: true, message: 'Đã nhận được phản hồi từ Google Script!' };
+    const data = JSON.parse(text);
+    if (data && data.success) {
+      return data;
+    }
+    throw new Error(data?.message || data?.error || 'Phản hồi không hợp lệ từ Google Script');
+  } catch (err) {
+    if (err.message.includes('Google Apps Script') || err.message.includes('chưa mở quyền')) {
+      throw err;
+    }
+    throw new Error('Phản hồi từ Google Apps Script không phải định dạng JSON: ' + text.slice(0, 100));
   }
 }
 
@@ -233,6 +252,14 @@ async function fetchAllSurveysFromSheet(customUrl = null) {
   }
 
   // Kiểm tra tính hợp lệ của URL
+  if (webhookUrl.includes('...')) {
+    return {
+      success: false,
+      reason: 'Đường link Webhook bị thiếu (chứa dấu ba chấm "..."). Vui lòng bấm nút "Sao chép" (Copy) trong Google Apps Script để lấy đường link đầy đủ.',
+      surveys: []
+    };
+  }
+
   if (webhookUrl.includes('/edit')) {
     return {
       success: false,
