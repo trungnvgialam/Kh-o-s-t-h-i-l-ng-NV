@@ -480,22 +480,19 @@ function doPost(e) {
         })).setMimeType(ContentService.MimeType.JSON);
       }
 
-      // Xóa dữ liệu cũ dưới dòng tiêu đề để tránh trùng lặp
-      var lastRow = sheet.getLastRow();
-      if (lastRow > 1) {
-        sheet.getRange(2, 1, lastRow - 1, HEADERS.length).clearContent();
+      // Đồng bộ thông minh bảo toàn dữ liệu: Cập nhật phiếu trùng ID hoặc thêm vào dòng trống, tuyệt đối không xóa dữ liệu cũ
+      for (var sIdx = 0; sIdx < surveys.length; sIdx++) {
+        var s = surveys[sIdx];
+        var rowValues = surveyToRowArray(s);
+        var targetRow = findRowForSurvey(sheet, s.id);
+        sheet.getRange(targetRow, 1, 1, rowValues.length).setValues([rowValues]);
+        formatRowAppearance(sheet, targetRow);
       }
-
-      var rows = surveys.map(function(s) {
-        return surveyToRowArray(s);
-      });
-
-      sheet.getRange(2, 1, rows.length, HEADERS.length).setValues(rows);
 
       return ContentService.createTextOutput(JSON.stringify({
         success: true,
-        count: rows.length,
-        message: "Đã đồng bộ thành công " + rows.length + " phiếu vào Google Sheet!"
+        count: surveys.length,
+        message: "Đã đồng bộ an toàn " + surveys.length + " phiếu vào Google Sheet (bảo toàn toàn bộ phiếu cũ)!"
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
