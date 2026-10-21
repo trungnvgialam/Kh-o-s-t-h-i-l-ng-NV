@@ -944,12 +944,16 @@ app.post('/api/admin/google-sheet-config', requireAdmin, (req, res) => {
   });
 });
 
-// Kiểm tra kết nối tới Google Sheet (Test Ping)
+// Kiểm tra kết nối tới Google Sheet (Test Ping & Tự động lưu cấu hình nếu kiểm tra thành công)
 app.post('/api/admin/test-google-sheet', requireAdmin, async (req, res) => {
   try {
     const { webhookUrl } = req.body || {};
     const result = await googleSheetSync.testWebhook(webhookUrl);
-    res.json({ success: true, data: result, message: 'Kết nối thành công tới Google Sheet!' });
+    // Tự động lưu Webhook URL vào hệ thống nếu kiểm tra thành công
+    if (webhookUrl && webhookUrl.trim()) {
+      googleSheetSync.setWebhookUrl(webhookUrl.trim());
+    }
+    res.json({ success: true, data: result, message: 'Kết nối thành công và đã tự động lưu cấu hình Google Sheet!' });
   } catch (err) {
     console.error('Google Sheet Test Error:', err);
     res.status(400).json({ success: false, message: err.message || 'Không thể kết nối đến Google Sheet Webhook.' });

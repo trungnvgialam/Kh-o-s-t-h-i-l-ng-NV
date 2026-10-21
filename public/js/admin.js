@@ -1405,12 +1405,15 @@ function setupGoogleSheetSyncEvents() {
       });
       const data = await res.json();
       if (data.success) {
+        if (webhookUrl) {
+          localStorage.setItem('admin_gsheet_webhook', webhookUrl);
+        }
         const detailMsg = data.data?.sheetName ? ` (${data.data.sheetName})` : '';
-        showAlert(`Kết nối thành công tới Google Sheet${detailMsg}! Dịch vụ hoạt động hoàn hảo.`, true);
+        showAlert(`Kết nối thành công tới Google Sheet${detailMsg}! Đã lưu cấu hình & Dịch vụ hoạt động hoàn hảo.`, true);
         if (statusBadge) {
           statusBadge.style.background = '#ecfdf5';
           statusBadge.style.color = '#047857';
-          statusBadge.innerText = '✓ Kết nối tốt';
+          statusBadge.innerText = '✓ Đang hoạt động';
         }
       } else {
         showAlert(data.message || 'Kiểm tra thất bại. Vui lòng kiểm tra lại URL.', false);
